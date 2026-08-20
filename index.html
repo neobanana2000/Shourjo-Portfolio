@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shourjo's Portfolio</title>
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; }
+    body { font-family:'Courier New',Courier,monospace; background:#f5f5f5; color:#000;
+           line-height:1.45; padding:10px; overflow:hidden; }
+    .app { height:100%; display:flex; flex-direction:column; gap:8px; max-width:1500px; margin:0 auto; }
+
+    .top { border:3px solid #000; background:#fff; padding:10px 15px;
+           display:flex; align-items:center; justify-content:space-between; gap:14px; }
+    .top h1 { font-size:21px; letter-spacing:2px; white-space:nowrap; }
+    .top a { padding:8px 15px; border:2px solid #000; background:#000; color:#fff;
+             font-size:12px; font-weight:bold; text-decoration:none; white-space:nowrap; }
+    .top a:hover { background:#fff; color:#000; }
+
+    .grid { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:8px; min-height:0; }
+    .right { display:grid; grid-template-rows:1fr 1fr; gap:8px; min-height:0; }
+    .panel { border:2px solid #000; background:#fff; display:flex; flex-direction:column;
+             min-height:0; min-width:0; overflow:hidden; }
+    .head { background:#000; color:#fff; padding:6px 13px; font-size:11px;
+            font-weight:bold; letter-spacing:1px; display:flex;
+            justify-content:space-between; align-items:center; gap:10px; }
+    .head .hint { font-weight:normal; color:#aaa; font-size:9px; letter-spacing:0; }
+    .body { flex:1; overflow-y:auto; padding:11px 14px; }
+
+    /* ---- about ---- */
+    .about h4 { font-size:11px; margin:11px 0 3px; letter-spacing:.5px; }
+    .about h4:first-child { margin-top:0; }
+    .about p  { font-size:11px; margin-bottom:5px; }
+    .about ol { font-size:11px; margin:0 0 5px 17px; }
+    .about li { margin-bottom:1px; }
+    .about .kv { font-size:10px; width:100%; border-collapse:collapse; margin-top:3px; }
+    .about .kv td { border:1px solid #ccc; padding:3px 6px; }
+    .about .kv td:first-child { width:34%; color:#555; }
+    .btn { padding:5px 10px; border:2px solid #000; background:#fff; font-family:inherit;
+           font-size:10px; font-weight:bold; cursor:pointer; }
+    .btn:hover { background:#f0f0f0; }
+    .btn:disabled { opacity:.45; cursor:default; }
+
+    /* ---- chart ---- */
+    .viz { --s1:#2a78d6; --s2:#eb6834; --grid:#e1e0d9; --axis:#c3c2b7;
+           --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --up:#0b7a3b; --down:#c02b2b; }
+    .viz svg { display:block; width:100%; height:auto; max-height:100%; overflow:visible; }
+    #chart { min-height:0; }
+    #chart svg { max-height:none; }
+    .statrow { display:flex; gap:18px; padding-bottom:7px; margin-bottom:7px;
+               border-bottom:2px solid #000; flex-wrap:wrap; }
+    .statrow .sv { font-size:18px; font-weight:bold; font-variant-numeric:tabular-nums; line-height:1.1; }
+    .statrow .sl { font-size:8.5px; color:#555; line-height:1.3; }
+    .statrow .src { color:#999; }
+    .legend { display:flex; gap:14px; font-size:10px; margin-bottom:5px; }
+    .legend .sw { display:inline-block; width:10px; height:10px; margin-right:5px;
+                  vertical-align:-1px; border:1px solid rgba(0,0,0,.25); }
+    .tip { position:fixed; pointer-events:none; z-index:60; background:#fff; border:2px solid #000;
+           padding:6px 8px; font-size:11px; line-height:1.45; display:none;
+           box-shadow:3px 3px 0 rgba(0,0,0,.15); }
+    .tip .th { font-weight:bold; }
+
+    /* ---- news ---- */
+    .ni { border-bottom:1px solid #e4e4e4; padding:9px 0; }
+    .ni:last-child { border-bottom:none; }
+    /* headlines must be fully readable: no clamping, no ellipsis, long words wrap */
+    .nh { font-size:13px; line-height:1.5; overflow-wrap:anywhere; word-break:normal; }
+    .nh a { color:#000; text-decoration:none; border-bottom:1px solid #bbb; }
+    .nh a:hover { background:#f0f0f0; border-bottom-color:#000; }
+    .nm { font-size:10px; color:#777; margin-top:3px; }
+    .chip { display:inline-block; border:1px solid #000; padding:0 5px; font-size:9px;
+            font-weight:bold; margin-right:6px; background:#f0f0f0; vertical-align:1px; }
+    select { font-family:inherit; font-size:10px; padding:1px 2px; border:1px solid #fff;
+             background:#000; color:#fff; }
+
+    .ovl { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:70;
+           display:flex; align-items:center; justify-content:center; padding:20px; }
+    .ovl-box { background:#fff; border:3px solid #000; max-width:620px; width:100%;
+               max-height:80vh; overflow:auto; }
+    .ovl-head { background:#000; color:#fff; padding:8px 12px; font-size:11px; font-weight:bold;
+                letter-spacing:1px; display:flex; justify-content:space-between; align-items:center;
+                position:sticky; top:0; }
+    .ovl-box .kv { font-size:11px; width:100%; border-collapse:collapse; }
+    .ovl-box .kv td { border:1px solid #ccc; padding:5px 8px; }
+    .ovl-box .kv td:first-child { width:34%; color:#555; }
+
+    .foot { font-size:10px; color:#666; display:flex; justify-content:space-between;
+            gap:14px; padding:0 3px; flex-wrap:wrap; }
+    .foot .bad { color:#a00; font-weight:bold; }
+
+    @media (max-width:900px) {
+        body { overflow:auto; } .app { height:auto; }
+        .grid { grid-template-columns:1fr; } .body { max-height:55vh; }
+    }
+
+    /* ---- performance panel ---- */
+    .pctrl { display:flex; gap:5px; align-items:center; flex-wrap:wrap;
+             padding-bottom:7px; margin-bottom:8px; border-bottom:1px solid #ddd; }
+    .pctrl .cl { font-size:8px; color:#888; letter-spacing:.5px; margin-right:1px; }
+    .btn.on { background:#000; color:#fff; }
+    .chip { padding:2px 7px; border:2px solid #ccc; background:#fff; font-family:inherit;
+            font-size:9.5px; font-weight:bold; cursor:pointer; color:#999; white-space:nowrap; }
+    .chip .sw { display:inline-block; width:8px; height:8px; margin-right:4px;
+                vertical-align:-1px; border:1px solid rgba(0,0,0,.3); background:#ccc; }
+    .chip.on { color:#000; border-color:#000; }
+    .left { display:grid; grid-template-rows:7fr 3fr; gap:8px; min-height:0; }
+    @media (max-width:900px) { .left { grid-template-rows:auto auto; } }
+    /* two sections inside the one about panel, split by a rule rather than a border */
+    .about-head { font-size:11px; font-weight:bold; letter-spacing:1px; margin:20px 0 7px;
+                  padding-bottom:4px; border-bottom:1px solid #000; }
+    .about-head:first-child { margin-top:0; }
+    .about ul { font-size:11px; margin:0 0 5px 17px; }
+    .about ul li { margin-bottom:4px; }
+    .left > .panel > .body.about { padding-top:13px; }
+    .statrow .stat { min-width:76px; }
+    .tip { max-width:330px; }
+    .btn.flt { padding:2px 6px; font-size:9px; }
+    .head .hr { display:flex; gap:8px; align-items:center; }
+    .head .rf { padding:1px 7px; font-size:8.5px; border:1px solid #fff; background:#000;
+                color:#fff; font-family:inherit; font-weight:bold; cursor:pointer;
+                letter-spacing:.5px; white-space:nowrap; }
+    .head .rf:hover { background:#fff; color:#000; }
+    .head .rf:disabled { opacity:.5; cursor:default; }
+    .slab:hover { text-decoration:underline; }
+    .top a.here { background:#fff; color:#000; cursor:default; }
+    .top .navwrap { display:flex; gap:8px; flex-wrap:wrap; }
+    @media (max-width:700px) { .top { flex-direction:column; align-items:flex-start; }
+        .top h1 { font-size:17px; letter-spacing:1px; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+    <div class="top">
+        <h1>SHOURJO'S PORTFOLIO</h1>
+        <div class="navwrap"><a href="index.html" class="here">HOME</a><a href="performance.html">PERFORMANCE METRICS</a><a href="holdings.html">HOLDINGS</a></div>
+    </div>
+
+    <div class="grid">
+
+        <!-- ============ LEFT COLUMN: about 70 / news 30 ============ -->
+        <div class="left">
+
+            <div class="panel">
+                <div class="body about">
+
+                    <!-- ============================================================
+                         Two sections in one panel. Styles available in both:
+                           <p>paragraph</p>
+                           <ol><li>numbered step</li></ol>
+                           <table class="kv"><tr><td>label</td><td>value</td></tr></table>
+                         Keep the <h4> headings and the divider where they are;
+                         paste your words between the START / END markers.
+                         ============================================================ -->
+
+                    <h4 class="about-head">ABOUT ME</h4>
+
+                    <!-- ===================== START ABOUT ME ===================== -->
+
+                    <p>Hello, my name is Shourjo and I am an undeclared business student. When the time comes to declare, I will most likely be choosing finance. I am from Austin, Texas, and I went to a public high school called Vandegrift, in the west Austin area. My hobbies are mountaineering, running, and playing guitar.</p>
+
+                    <!-- ====================== END ABOUT ME ====================== -->
+
+                    <h4 class="about-head">ABOUT THIS WEBSITE</h4>
+
+                    <!-- =================== START ABOUT THIS SITE ================ -->
+
+                    <p>In high school I ran the stock trading club with two other friends. We ran a paper-traded portfolio with around 40 people through the Interactive Brokers platform, and this website accompanied that portfolio as the club's site. When my friends and I left high school, the club closed.</p>
+
+                    <p>This past summer I started updating the website as a passion project. I developed more advanced accounting skills and learned the framework behind DCF valuations, along with Claude-based JavaScript and HTML. This website has ultimately become a way for me to continue the enjoyment I felt from the club as well as for my practice.</p>
+
+                    <!-- ==================== END ABOUT THIS SITE ================= -->
+
+                    <h4 class="about-head">MOST RECENT UPDATES</h4>
+
+                    <!-- ===================== START UPDATES ====================== -->
+
+                    <ul>
+                        <li>An automatic DCF builder that takes any .htm filing from the SEC EDGAR database and produces a valuation for the company, with some additional guidance and plugins.</li>
+                        <li>A news channel for the holdings.</li>
+                        <li>Live price updating across the whole website, which serves as the basis for every live calculation on it. This was done using the Finnhub API service.</li>
+                    </ul>
+
+                    <!-- ====================== END UPDATES ======================= -->
+
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="head">
+                    <div>NEWS ON HOLDINGS</div>
+                    <div style="display:flex;gap:7px;align-items:center;">
+                        <select id="newsDays">
+                            <option value="3">3d</option><option value="7" selected>7d</option>
+                            <option value="14">14d</option><option value="30">30d</option>
+                        </select>
+                        <span class="hint" id="newsStatus">loading&hellip;</span>
+                        <button class="btn nrf" style="padding:1px 7px;font-size:8.5px;border:1px solid #fff;background:#000;color:#fff;font-family:inherit;font-weight:bold;cursor:pointer;">REFRESH</button>
+                    </div>
+                </div>
+                <div class="body">
+                    <div id="newsList"></div>
+                    <button class="btn" id="newsMore" style="display:none;margin-top:8px;">MORE</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ============ RIGHT COLUMN: the chart, full height ============ -->
+            <div class="panel viz" id="perfPanel">
+                <div class="head">
+                    <div>ENTRY &rarr; NOW</div>
+                    <div class="hr"><span class="hint">modelled $10,000 book &middot; click the chart for the dashboard &rarr;</span><button class="btn rf">REFRESH LIVE</button></div>
+                </div>
+                <div class="body" id="perfBody" style="padding:9px 13px;">
+                    <div class="statrow">
+                        <div class="stat">
+                            <div class="sv" id="pAnn">&mdash;</div>
+                            <div class="sl">portfolio<br><span class="src">annualised</span></div>
+                        </div>
+                        <div class="stat">
+                            <div class="sv" id="sAnn">&mdash;</div>
+                            <div class="sl">S&amp;P 500<br><span class="src">same $, same dates</span></div>
+                        </div>
+                        <div class="stat">
+                            <div class="sv" id="pExc">&mdash;</div>
+                            <div class="sl">excess p.a.<br><span class="src">points vs S&amp;P</span></div>
+                        </div>
+                        <div class="stat">
+                            <div class="sv" id="pTot">&mdash;</div>
+                            <div class="sl">total return<br><span class="src">since entry</span></div>
+                        </div>
+                        <div class="stat">
+                            <div class="sv" id="pVal">&mdash;</div>
+                            <div class="sl">value<br><span class="src">live, Finnhub</span></div>
+                        </div>
+                    </div>
+                    <div class="pctrl">
+                        <span class="cl">SHOW</span>
+                        <button class="btn flt on" data-f="all">ALL 27</button>
+                        <button class="btn flt" data-f="top10">TOP 10</button>
+                        <button class="btn flt" data-f="bottom10">BOTTOM 10</button>
+                        <button class="btn flt" data-f="none">INDICES ONLY</button>
+                        <span class="cl" style="margin-left:5px">INDICES</span>
+                        <span id="chips"></span>
+                    </div>
+                    <div id="chart"></div>
+                </div>
+            </div>
+    </div>
+
+
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+/* ================= config & data ================= */
+const FINNHUB_API_KEY = 'da11ropr01qo0t0kpao0da11ropr01qo0t0kpaog';
+const API = 'https://finnhub.io/api/v1';
+const HOLDINGS = [
+    {"n": "CRH plc", "t": "CRH", "q": 5.86, "c": 688.84, "v": 579.31, "s": "Materials", "r": "Europe"},
+    {"n": "Imperial Oil", "t": "IMO", "q": 3.57, "c": 437.16, "v": 462.61, "s": "Energy", "r": "North America"},
+    {"n": "Teva Pharmaceutical", "t": "TEVA", "q": 13.24, "c": 428.31, "v": 484.84, "s": "Health Care", "r": "Middle East"},
+    {"n": "Tower Semiconductor", "t": "TSEM", "q": 0.92, "c": 213.14, "v": 247.71, "s": "Technology", "r": "Middle East"},
+    {"n": "Airbus SE", "t": "EADSY", "q": 13.96, "c": 734.91, "v": 857.56, "s": "Industrials", "r": "Europe"},
+    {"n": "Banco Santander", "t": "SAN", "q": 188.44, "c": 2387.68, "v": 2787.96, "s": "Financials", "r": "Europe"},
+    {"n": "Safran SA", "t": "SAFRY", "q": 11.77, "c": 1053.05, "v": 1230.73, "s": "Industrials", "r": "Europe"},
+    {"n": "Sumitomo Corp", "t": "SSUMY", "q": 101.52, "c": 959.85, "v": 1147.78, "s": "Industrials", "r": "Japan"},
+    {"n": "Mizuho Financial Group", "t": "MFG", "q": 146.93, "c": 1295.01, "v": 1588.31, "s": "Financials", "r": "Japan"},
+    {"n": "Banco Bilbao Vizcaya", "t": "BBVA", "q": 19.82, "c": 460.64, "v": 565.16, "s": "Financials", "r": "Europe"},
+    {"n": "Sumitomo Mitsui Financial", "t": "SMFG", "q": 64.45, "c": 1365.35, "v": 1676.34, "s": "Financials", "r": "Japan"},
+    {"n": "UBS Group AG", "t": "UBS", "q": 18.9, "c": 824.32, "v": 1015.87, "s": "Financials", "r": "Europe"},
+    {"n": "ING Groep N.V.", "t": "ING", "q": 29.19, "c": 843.47, "v": 1039.6, "s": "Financials", "r": "Europe"},
+    {"n": "ASML Holding NV", "t": "ASML", "q": 2.21, "c": 3255.47, "v": 4014.97, "s": "Technology", "r": "Europe"},
+    {"n": "Honda Motor Co", "t": "HMC", "q": 8.17, "c": 206.94, "v": 255.72, "s": "Consumer Disc.", "r": "Japan"},
+    {"n": "Mitsubishi UFJ Financial", "t": "MUFG", "q": 28.72, "c": 523.26, "v": 654.52, "s": "Financials", "r": "Japan"},
+    {"n": "Kyocera Corp", "t": "KYOAY", "q": 17.15, "c": 327.39, "v": 410.22, "s": "Technology", "r": "Japan"},
+    {"n": "Repsol SA", "t": "REPYY", "q": 5.45, "c": 129.78, "v": 164.53, "s": "Energy", "r": "Europe"},
+    {"n": "Orix Corporation", "t": "IX", "q": 28.128, "c": 895.24, "v": 1136.08, "s": "Financials", "r": "Japan"},
+    {"n": "DBS Group Holdings Ltd", "t": "DBSDY", "q": 4.56, "c": 842.83, "v": 1079.96, "s": "Financials", "r": "Asia ex-Japan"},
+    {"n": "Bridgestone Corp", "t": "BRDCY", "q": 29.63, "c": 307.3, "v": 394.07, "s": "Consumer Disc.", "r": "Japan"},
+    {"n": "Renesas Electronics Corp", "t": "RNECY", "q": 43.7, "c": 409.11, "v": 526.14, "s": "Technology", "r": "Japan"},
+    {"n": "Advantest Corp", "t": "ATEYY", "q": 6.3, "c": 1081.71, "v": 1407.35, "s": "Technology", "r": "Japan"},
+    {"n": "Kioxia Holdings Corporation", "t": "KXIAY", "q": 27.1, "c": 662.31, "v": 877.96, "s": "Technology", "r": "Japan"},
+    {"n": "Tokyo Electron", "t": "TOELY", "q": 3.15, "c": 442.22, "v": 589.05, "s": "Technology", "r": "Japan"},
+    {"n": "Recruit Holdings Co Ltd", "t": "RCRUY", "q": 12.21, "c": 170.57, "v": 257.8, "s": "Industrials", "r": "Japan"},
+    {"n": "Panasonic Holdings Corp", "t": "PCRHY", "q": 46.64, "c": 876.83, "v": 1355.35, "s": "Technology", "r": "Japan"}
+];
+const M_IMO = {
+            company:   'IMPERIAL OIL LTD',
+            formType:  '10-Q',
+            periodEnd: '2026-06-30',
+            periodLabel: 'H1 2026',
+            asOfLabel: 'June 30, 2026',
+            factor:    2,
+            ebit:         4092,
+            finCost:        25,
+            assetGains:    -64,
+            restrAdj:        0,
+            impairment:      0,
+            da:           1031,
+            capex:        1005,
+            dNWC:            0,
+            cash:         2839,
+            shortDebt:      19,
+            longDebt:     3969,
+            shares:        485,
+            tax:   0.235,
+            kd:    3.21,
+            rf:    3.30,
+            rfUS:  4.20,
+            fx:    1.37,
+            mrpOverride: 5.0,
+            g:     2.1,
+            g1:    2.0,
+            g2:    2.0,
+            spx:     5847,
+            spxDiv:  237.50,
+            segments: [
+                {n:'Upstream',   pct:54.27, beta:1.15},
+                {n:'Downstream', pct:42.96, beta:0.90},
+                {n:'Chemical',   pct:2.77,  beta:0.95}
+            ],
+            otherBeta: 1.00,
+            regions: [
+                {n:'Canada',        pct:80.16, cds:0.30},
+                {n:'United States', pct:19.84, cds:0.25}
+            ],
+            otherCds: 0.35,
+            provenance: 'Imperial Oil Limited Form 10-Q for the quarterly period ended June 30, 2026',
+            srcFile: 'imo20260630.htm',
+            srcTags: {
+                periodLabel:  '2026-01-01 to 2026-06-30',
+                factor:       '181-day period, annualised x2',
+                ebit:         'us-gaap:IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest',
+                finCost:      'us-gaap:InterestExpense (total financing costs, note 5)',
+                assetGains:   'us-gaap:GainLossOnDispositionOfAssets1 (one-time gain, removed)',
+                restrAdj:     'not reported outside a dimensional context - set to 0',
+                impairment:   'not reported in this filing - set to 0',
+                da:           'us-gaap:DepreciationDepletionAndAmortization',
+                capex:        'us-gaap:PaymentsToAcquireProductiveAssets',
+                cash:         'us-gaap:CashAndCashEquivalentsAtCarryingValue',
+                shortDebt:    'us-gaap:DebtCurrent',
+                longDebt:     'us-gaap:LongTermDebtAndCapitalLeaseObligations (long-term debt plus finance leases)',
+                shares:       'us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding (diluted, this period)'
+            }
+        };
+const M_CRH = {
+            company:   'CRH public limited company',
+            formType:  '10-Q',
+            periodEnd: '2026-06-30',
+            periodLabel: 'H1 2026',
+            asOfLabel: 'June 30, 2026',
+            factor:    2,
+            ebit:         2041,
+            iprd:            0,
+            legal:           0,
+            impairRestr:     0,
+            impairIntang:   48,
+            da:           1124,
+            capex:        1240,
+            dNWC:            0,
+            cash:         3025,
+            shortDebt:    2516,
+            longDebt:    15410,
+            shares:        670,
+            tax:   0.25,
+            kd:    4.72,
+            rf:    4.2,
+            mrpOverride: 5.0,
+            g:     2.1,
+            g1:    6,
+            g2:    3,
+            spx:     5847,
+            spxDiv:  237.50,
+            segments: [
+                {n:'Americas Materials Solutions', pct:42.3, beta:0.95},
+                {n:'Americas Building Solutions',  pct:20.9, beta:1.05},
+                {n:'International Solutions',      pct:36.8, beta:1.10}
+            ],
+            otherBeta: 1.05,
+            regions: [
+                {n:'Americas (US & Canada)', pct:63.2, cds:0.20},
+                {n:'International',          pct:36.8, cds:0.35}
+            ],
+            otherCds: 0.35,
+            provenance: 'CRH plc Form 10-Q for the quarterly period ended June 30, 2026',
+            srcFile: 'crh-20260630.htm',
+            srcTags: {
+                periodLabel:  '2026-01-01 to 2026-06-30',
+                factor:       '181-day period, annualised x2',
+                ebit:         'us-gaap:OperatingIncomeLoss',
+                iprd:         'not reported in this filing - set to 0',
+                legal:        'not reported in this filing - set to 0',
+                impairRestr:  'not reported in this filing - set to 0',
+                impairIntang: 'us-gaap:AssetImpairmentCharges (goodwill impairment on the construction accessories divestiture)',
+                da:           'us-gaap:DepreciationDepletionAndAmortization',
+                capex:        'us-gaap:PaymentsToAcquireProductiveAssets',
+                cash:         'us-gaap:CashAndCashEquivalentsAtCarryingValue',
+                shortDebt:    'us-gaap:DebtCurrent',
+                longDebt:     'us-gaap:LongTermDebtNoncurrent',
+                shares:       'us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding (diluted, this period)'
+            }
+        };
+const M_TEVA = {
+            company:   'Teva Pharmaceutical Industries Limited',
+            formType:  '10-Q',
+            periodEnd: '2026-06-30',
+            periodLabel: 'H1 2026',
+            asOfLabel: 'June 30, 2026',
+            factor:    2,          // annualisation multiplier for the period
+            // --- income / cash-flow items, as reported for the period ---
+            ebit:         421,
+            iprd:         724,     // acquired IPR&D (Emalex) - one-time
+            legal:        303,     // legal settlements & loss contingencies
+            impairRestr:  173,     // other asset impairments, restructuring
+            impairIntang:  30,     // intangible asset impairments
+            da:           480,
+            capex:        273,
+            dNWC:           0,
+            // --- balance sheet, at period end ---
+            cash:        3655,
+            shortDebt:   4500,
+            longDebt:   12092,
+            shares:      1160,     // millions, diluted weighted-average for H1 2026
+            // --- assumptions (NOT auto-extracted from the filing) ---
+            tax:   0.23,      // statutory tax rate
+            kd:    4.767,     // pre-tax cost of debt, wtd avg coupon (10-Q Note 7)
+            rf:    4.2,       // risk-free rate, US 10Y
+            g:     2.1,       // long-run GDP growth - drives BOTH the DDM and terminal value
+            g1:    8,         // FCF growth, years 1-3
+            g2:    4,         // FCF growth, years 4-5
+            // DDM base inputs -> market return Rm -> market risk premium
+            spx:     5847,    // S&P 500 index level
+            spxDiv:  237.50,  // S&P 500 annual dividend per share
+            // segment mix in % of revenue -> unlevered beta
+            segments: [
+                {n:'Generics',           pct:51.58, beta:0.68},
+                {n:'Specialty Pharma',   pct:27.73, beta:0.95},
+                {n:'API',                pct: 2.79, beta:0.72}
+            ],
+            otherBeta: 0.75,  // beta applied to the residual "Other" segment
+            // geographic mix in % of revenue -> country risk premium
+            regions: [
+                {n:'United States',         pct:39.83, cds:0.20},
+                {n:'Europe',                pct:32.04, cds:0.35},
+                {n:'International Markets', pct:13.22, cds:1.20}
+            ],
+            otherCds: 0.20,   // CDS spread applied to the residual "Other" region
+            provenance: 'Teva Form 10-Q for the quarterly period ended June 30, 2026',
+            // the document each baseline figure was read out of, and the inline-XBRL tag used
+            srcFile: 'd118828d10q.htm',
+            srcTags: {
+                ebit:         'us-gaap:OperatingIncomeLoss',
+                iprd:         'teva:ResearchAndDevelopmentExpenseAndLiabilities',
+                legal:        'teva:LegalSettlementsAndLossContingencies',
+                impairRestr:  'teva:ImpairmentsRestructuringAndOthers',
+                impairIntang: 'teva:IntangibleAssetImpairments',
+                da:           'us-gaap:DepreciationAndAmortization',
+                capex:        'us-gaap:PaymentsToAcquireProductiveAssets',
+                cash:         'us-gaap:CashAndCashEquivalentsAtCarryingValue',
+                shortDebt:    'us-gaap:DebtCurrent',
+                longDebt:     'us-gaap:LongTermNotesAndLoans',
+                shares:       'us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding (diluted, this period)  |  also in filing: cover page 1,165M, issued 1,271M less treasury 106M = 1,165M  |  MD&A quotes 1,191M fully diluted for market cap',
+                periodLabel:  'six months ended 2026-06-30',
+                factor:       '181-day period, annualised x2'
+            }
+        };
+const DCF = [
+    {key:'IMO',  name:'Imperial Oil', model:M_IMO,  page:'imo_dcf.html'},
+    {key:'CRH',  name:'CRH plc',      model:M_CRH,  page:'crh_dcf.html'},
+    {key:'TEVA', name:'Teva',         model:M_TEVA, page:'teva_dcf.html'}
+];
+
+/* ================= valuation - same arithmetic as the model pages ================= */
+function valueModel(m, priceUSD) {
+    const z = k => (typeof m[k] === 'number' ? m[k] : 0);
+    const fx = m.fx || 1;
+    const sN = m.segments.reduce((s,x)=>s+x.pct,0), rN = m.regions.reduce((s,x)=>s+x.pct,0);
+    const segRows = m.segments.concat(100-sN > 0.005 ? [{pct:100-sN, beta:m.otherBeta}] : []);
+    const regRows = m.regions .concat(100-rN > 0.005 ? [{pct:100-rN, cds:m.otherCds}]  : []);
+    const sT = segRows.reduce((s,x)=>s+x.pct,0), rT = regRows.reduce((s,x)=>s+x.pct,0);
+    const betaU = sT ? segRows.reduce((s,x)=>s+(x.pct/sT)*x.beta,0) : 0;
+    const crp   = rT ? regRows.reduce((s,x)=>s+(x.pct/rT)*x.cds,0) : 0;
+    const gd = m.g/100;
+    const rm = m.spx > 0 ? (m.spxDiv*(1+gd)/m.spx + gd)*100 : 0;
+    const mrp = m.mrpOverride > 0 ? m.mrpOverride : rm - (m.rfUS || m.rf);
+    const debt = m.shortDebt + m.longDebt, netDebt = debt - m.cash;
+    const normP = m.ebit + z('iprd') + z('legal') + z('impairRestr') + z('impairIntang')
+                + z('finCost') + z('assetGains') + z('restrAdj') + z('impairment');
+    const fcf0 = normP*m.factor*(1-m.tax) + m.da*m.factor - m.capex*m.factor - z('dNWC')*m.factor;
+    const f = [];
+    f[0]=fcf0*(1+m.g1/100); f[1]=f[0]*(1+m.g1/100); f[2]=f[1]*(1+m.g1/100);
+    f[3]=f[2]*(1+m.g2/100); f[4]=f[3]*(1+m.g2/100);
+    const E = m.shares*priceUSD*fx;
+    const betaL = betaU*(1 + (1-m.tax)*debt/E);
+    const ke = m.rf + betaL*mrp + crp;
+    const V = E + debt;
+    const wacc = (E/V)*ke + (debt/V)*m.kd*(1-m.tax);
+    const r = wacc/100, g = m.g/100;
+    if (r <= g) return {wacc, ips:NaN};
+    const tv = f[4]*(1+g)/(r-g);
+    let pv=0; for (let i=0;i<5;i++) pv += f[i]/Math.pow(1+r,i+1);
+    const ev = pv + tv/Math.pow(1+r,5);
+    return {wacc, ips:((ev-netDebt)/m.shares)/fx};
+}
+
+/* ================= helpers ================= */
+const $ = id => document.getElementById(id);
+const money = (n,d) => '$' + n.toLocaleString('en-US',{minimumFractionDigits:d===undefined?2:d,
+                                                       maximumFractionDigits:d===undefined?2:d});
+const pct = n => (n>0?'+':'') + n.toFixed(1) + '%';
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const iso = d => d.toISOString().slice(0,10);
+const errOf = st => st===429 ? 'rate limited' : (st===401||st===403) ? 'not on your plan' : 'HTTP '+st;
+let PRICES = {};
+
+async function batched(items, size, gapMs, fn) {
+    const out = [];
+    for (let i=0;i<items.length;i+=size) {
+        out.push(...await Promise.all(items.slice(i,i+size).map(fn)));
+        if (i+size < items.length) await new Promise(r=>setTimeout(r,gapMs));
+    }
+    return out;
+}
+
+/* ================= prices ================= */
+async function loadPrices() {
+    await refreshLive('priceStatus', null);
+    let live = 0;
+    HOLDINGS.forEach(h => {
+        const q = (PS.live && PS.live.q) ? PS.live.q[h.t] : null;
+        if (q && q.c > 0) { PRICES[h.t] = q.c; live++; } else PRICES[h.t] = null;
+    });
+    render();
+    const c = priceCensus();
+    const el = $('priceStatus');
+    if (el) {
+        el.innerHTML = c.live.length + ' of ' + PERF.positions.length + ' live'
+            + (c.stale.length ? ' · <span style="color:#b06a00">' + c.stale.length
+                + ' held at ' + PERF.asOf + ' close (Finnhub quote older): ' + c.stale.join(' ')
+                + '</span>' : '')
+            + (c.dropped.length ? ' · <span style="color:#c02b2b">' + c.dropped.length
+                + ' dropped, Finnhub cannot price: ' + c.dropped.join(' ') + '</span>' : '')
+            + ' · indices ' + c.prox + '/' + c.proxTotal + ' live'
+            + (PS.live && PS.live.via === 'server'
+                 ? ' · <span style="color:#0b7a3b">via site backend</span>'
+                 : ' · <span style="color:#b06a00">direct to Finnhub (key is public)</span>');
+        el.className = live ? '' : 'bad';
+    }
+}
+
+const posValue = h => PRICES[h.t] ? PRICES[h.t]*h.q : h.v;
+
+/* ================= the one chart ================= */
+function rows() {
+    return DCF.map(d => {
+        const h = HOLDINGS.find(x=>x.t===d.key);
+        const price = PRICES[d.key] || (h ? h.v/h.q : 0);
+        const v = price>0 ? valueModel(d.model, price) : {ips:NaN, wacc:0};
+        return {name:d.name, key:d.key, page:d.page, price, iv:v.ips, wacc:v.wacc,
+                up: isFinite(v.ips) ? (v.ips-price)/price*100 : NaN,
+                per: d.model.periodLabel+' '+d.model.formType};
+    });
+}
+
+/* the slope engine calls this after a hover or a chip toggle */
+function redraw() { renderChart(); }
+
+function drawChips() {
+    const c = $('chips'); if (!c) return;
+    c.innerHTML = '';
+    PROXY_KEYS.forEach(k => {
+        const on = PS.shown.includes(k), m = PERF.proxies[k];
+        const b = document.createElement('button');
+        b.className = 'chip' + (on ? ' on' : '');
+        b.innerHTML = '<span class="sw" style="background:'+(on?m.color:'#ccc')+'"></span>'+esc(m.label);
+        b.onclick = ev => {
+            ev.stopPropagation();
+            const i = PS.shown.indexOf(k);
+            if (i >= 0) PS.shown.splice(i,1); else PS.shown.push(k);
+            renderChart();
+        };
+        c.appendChild(b);
+    });
+}
+
+function renderChart() {
+    /* prices already live in PS.live.q — loadPrices routes through the engine */
+    drawChips();
+    /* Fit the chart to whatever room the panel actually has, rather than a fixed
+       aspect that either overflows or leaves white space at some window sizes. */
+    const box = $('perfBody'), el = $('chart');
+    const availH = box.clientHeight - (el.offsetTop - box.offsetTop) - 8;
+    const availW = el.clientWidth || 700;
+    const H = Math.max(300, Math.min(900, Math.round(860 * availH / availW)));
+    drawSlope('chart', {W:860, H:H, MR:172});
+
+    const pv = portValue(), pr = portReturn(), sr = benchReturn('SPY');
+    const pi = irr(pv), si = irr(benchValue('SPY'));
+    set2('pAnn', Ppct(pi,1));
+    set2('sAnn', Ppct(si,1));
+    set2('pExc', isFinite(pi-si) ? ((pi-si>0?'+':'') + (pi-si).toFixed(1) + ' pts') : '—');
+    set2('pTot', Ppct(pr,2));
+    set2('pVal', Pmoney(pv,0));
+    const a=$('pAnn'), x=$('pExc'), tt=$('pTot');
+    if (a)  a.style.color  = pi    >= 0 ? '#0b7a3b' : '#c02b2b';
+    if (x)  x.style.color  = pi-si >= 0 ? '#0b7a3b' : '#c02b2b';
+    if (tt) tt.style.color = pr    >= 0 ? '#0b7a3b' : '#c02b2b';
+}
+const set2 = (id,v) => { const e=$(id); if (e) e.textContent=v; };
+
+function render() {
+    renderChart();
+    const value = HOLDINGS.reduce((s,h)=>s+posValue(h),0);
+    const cost  = HOLDINGS.reduce((s,h)=>s+h.c,0);
+    /* the footer summary strip was removed */
+}
+
+/* ================= tooltip ================= */
+const tip = $('tip');
+function showTip(e,h) {
+    tip.innerHTML=h; tip.style.display='block';
+    let x=e.clientX+13, y=e.clientY+13;
+    if (x+tip.offsetWidth  > innerWidth -8) x = e.clientX-tip.offsetWidth -13;
+    if (y+tip.offsetHeight > innerHeight-8) y = e.clientY-tip.offsetHeight-13;
+    tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+const hideTip = () => { tip.style.display='none'; };
+
+/* ================= news ================= */
+const ago = ts => { const s=Date.now()/1000-ts;
+    return s<3600 ? Math.max(1,Math.round(s/60))+'m' : s<86400 ? Math.round(s/3600)+'h'
+         : Math.round(s/86400)+'d'; };
+let NEWS=[], SHOWN=0; const PAGE=15;
+
+const newsItem = x =>
+    '<div class="ni"><div class="nh"><span class="chip">'+esc(x.t)+'</span>'
+  + '<a href="'+esc(x.url)+'" target="_blank" rel="noopener">'+esc(x.head)+'</a></div>'
+  + '<div class="nm">'+ago(x.dt)+' ago'+(x.src?' · '+esc(x.src):'')
+  + (x.n?' · '+esc(x.n):'')+'</div></div>';
+
+function showMore() {
+    const s = NEWS.slice(SHOWN, SHOWN+PAGE);
+    $('newsList').insertAdjacentHTML('beforeend', s.map(newsItem).join(''));
+    SHOWN += s.length;
+    const m = $('newsMore');
+    m.style.display = SHOWN<NEWS.length ? 'inline-block' : 'none';
+    m.textContent = 'MORE ('+(NEWS.length-SHOWN)+')';
+}
+
+async function loadNews() {
+    const days = parseInt($('newsDays').value,10);
+    const to=new Date(), from=new Date(Date.now()-days*86400000), cut=from.getTime()/1000;
+    $('newsStatus').textContent='loading…';
+    const res = await batched(HOLDINGS, 5, 300, async h => {
+        try {
+            const r = await fetch(API+'/company-news?symbol='+encodeURIComponent(h.t)
+                    + '&from='+iso(from)+'&to='+iso(to)+'&token='+FINNHUB_API_KEY);
+            if (!r.ok) return {h, err:errOf(r.status)};
+            const d = await r.json();
+            return Array.isArray(d) ? {h, items:d.filter(x=>x&&x.datetime>=cut&&x.headline&&x.url)}
+                                    : {h, err:'bad response'};
+        } catch(e) { return {h, err:'network/CORS'}; }
+    });
+    NEWS=[]; const errs={}; let covered=0;
+    res.forEach(r => {
+        if (r.err) { errs[r.err]=(errs[r.err]||0)+1; return; }
+        if (r.items.length) covered++;
+        r.items.forEach(x=>NEWS.push({t:r.h.t,n:r.h.n,head:x.headline,url:x.url,src:x.source,dt:x.datetime}));
+    });
+    const seen={};
+    NEWS = NEWS.filter(x=>{ const k=x.head.toLowerCase().trim();
+                            if (seen[k]) return false; seen[k]=1; return true; })
+               .sort((a,b)=>b.dt-a.dt);
+    const et = Object.keys(errs).map(k=>errs[k]+' '+k).join(', ');
+    $('newsStatus').textContent = NEWS.length
+        ? NEWS.length+' from '+covered+'/'+HOLDINGS.length+' holdings'+(et?' ('+et+')':'')
+        : 'none'+(et?' — '+et:' in this window');
+    SHOWN=0; $('newsList').innerHTML=''; showMore();
+}
+
+/* ================= finnhub capability probe ================= */
+const PROBES = [
+    ['Quote','/quote?symbol=IMO','live prices'],
+    ['Company news','/company-news?symbol=IMO&from=__F__&to=__T__','the news panel'],
+    ['Market news','/news?category=general','general economic headlines'],
+    ['Company profile','/stock/profile2?symbol=IMO','industry, market cap, shares'],
+    ['Basic financials','/stock/metric?symbol=IMO&metric=all','52wk range, P/E, margins, ROE, yield'],
+    ['Peers','/stock/peers?symbol=IMO','comparable companies'],
+    ['Recommendations','/stock/recommendation?symbol=IMO','analyst buy/hold/sell'],
+    ['Earnings surprises','/stock/earnings?symbol=IMO','reported vs estimated EPS'],
+    ['Earnings calendar','/calendar/earnings?from=__F__&to=__T__','when holdings next report'],
+    ['Price targets','/stock/price-target?symbol=IMO','a projection for unmodelled names'],
+    ['Candles (OHLC)','/stock/candle?symbol=IMO&resolution=D&from=__U1__&to=__U2__','price history charts'],
+    ['Forex rates','/forex/rates?base=USD','live C$/US$ for the Imperial model']
+];
+async function runProbe() {
+    const b=$('probeBtn'); b.textContent='checking…';
+    const to=new Date(), from=new Date(Date.now()-7*86400000);
+    const fill = p => p.replace('__F__',iso(from)).replace('__T__',iso(to))
+                       .replace('__U1__',Math.floor(from/1000)).replace('__U2__',Math.floor(to/1000));
+    const out = await batched(PROBES, 4, 400, async p => {
+        try {
+            const r = await fetch(API+fill(p[1])+(p[1].indexOf('?')>=0?'&':'?')+'token='+FINNHUB_API_KEY);
+            if (!r.ok) return {p, ok:false, why:errOf(r.status)};
+            const d = await r.json();
+            const empty = d==null || (Array.isArray(d)&&!d.length)
+                       || (typeof d==='object'&&!Array.isArray(d)&&!Object.keys(d).length)
+                       || (d&&d.s==='no_data');
+            return empty ? {p, ok:false, why:'works, no data for IMO'} : {p, ok:true};
+        } catch(e) { return {p, ok:false, why:'network/CORS'}; }
+    });
+    $('probeOut').innerHTML =
+        '<div class="ovl"><div class="ovl-box"><div class="ovl-head">'
+      + '<span>FINNHUB KEY &mdash; WHAT IT UNLOCKS</span>'
+      + '<button class="btn" onclick="document.getElementById(\'probeOut\').innerHTML=\'\'">CLOSE</button></div>'
+      + '<table class="kv">'
+      + out.map(r=>'<tr><td>'+esc(r.p[0])+'</td><td><strong style="color:'
+          + (r.ok?'#0b7a3b':'#c02b2b') + '">' + (r.ok?'YES':esc(r.why))
+          + '</strong> &mdash; ' + esc(r.p[2]) + '</td></tr>').join('') + '</table></div></div>';
+    b.textContent='check finnhub key';
+}
+
+/* ================= wiring ================= */
+document.addEventListener('DOMContentLoaded', () => {
+    PS.clickHref = 'performance.html';
+    document.querySelectorAll('.flt').forEach(b => b.addEventListener('click', ev => {
+        ev.stopPropagation();
+        document.querySelectorAll('.flt').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on'); PS.filter = b.dataset.f; renderChart();
+    }));
+    wireRefreshButtons('priceStatus', () => { 
+        HOLDINGS.forEach(h => { const q = (PS.live && PS.live.q) ? PS.live.q[h.t] : null;
+                                PRICES[h.t] = (q && q.c > 0) ? q.c : null; });
+        render();
+    });
+    document.querySelectorAll('.nrf').forEach(b => b.addEventListener('click', ev => {
+        ev.stopPropagation(); ev.preventDefault(); loadNews();
+    }));
+    $('newsDays').addEventListener('change', loadNews);
+    $('newsMore').addEventListener('click', showMore);
+    addEventListener('scroll', hideTip, true);
+    let rz; addEventListener('resize', () => { clearTimeout(rz); rz=setTimeout(renderChart,120); });
+    render(); loadPrices(); loadNews();
+});
+</script>
+<script>
+/* ============================================================
+   SHARED QUOTE CACHE
+
+   Every page on this site needs the same quotes, and the Finnhub free tier
+   allows 60 calls a minute. Loaded independently that is index 33 +
+   performance 33 + holdings 27 + three DCF pages = 96 calls, so whichever
+   page you opened second used to receive HTTP 429 and quietly fall back to
+   its baked-in prices — which looked like "Finnhub works on some pages and
+   not others" with no visible cause.
+
+   All pages now read and write one cache in the browser. The first page to
+   load pays for the quotes; every other page reads them for free until they
+   expire. Entries are timestamped individually, so a page that only needs
+   one symbol never refreshes the other thirty-two.
+   ============================================================ */
+var QC_KEY = 'shourjo_quotes_v1';
+var QC_TTL = 120000;                       /* 2 minutes */
+
+function qcacheAll() {
+    try { return JSON.parse(localStorage.getItem(QC_KEY) || '{}') || {}; }
+    catch (e) { return {}; }               /* storage disabled — behave as a miss */
+}
+function qcacheGet(sym) {
+    var e = qcacheAll()[sym];
+    if (!e || !(e.c > 0)) return null;
+    if (Date.now() - e.at > QC_TTL) return null;
+    return {c: e.c, ms: e.ms};
+}
+function qcachePut(map) {
+    try {
+        var q = qcacheAll(), now = Date.now();
+        for (var k in map) if (map[k] && map[k].c > 0)
+            q[k] = {c: map[k].c, ms: map[k].ms || now, at: now};
+        localStorage.setItem(QC_KEY, JSON.stringify(q));
+    } catch (e) { /* storage full or disabled — the page still works, just uncached */ }
+}
+function qcacheAge() {
+    var q = qcacheAll(), newest = 0;
+    for (var k in q) if (q[k] && q[k].at > newest) newest = q[k].at;
+    return newest ? Math.round((Date.now() - newest) / 1000) : null;
+}
+
+</script>
+<script>
+const FINNHUB_BASE = "https://finnhub.io/api/v1";
+const PERF = {"asOf":"2026-08-18","cash0":9998.03,"positions":[{"t":"RCRUY","n":"Recruit Holdings Co Ltd","s":"Industrials","r":"Japan","buy":"2025-11-18","px":9.86,"sh":31,"cost":305.66,"px2":20.3},{"t":"DBSDY","n":"DBS Group Holdings Ltd","s":"Financials","r":"Asia ex-Japan","buy":"2025-01-15","px":127.2,"sh":2,"cost":254.4,"px2":236.75},{"t":"SMFG","n":"Sumitomo Mitsui Financial","s":"Financials","r":"Japan","buy":"2025-01-31","px":14.88,"sh":16,"cost":238.08,"px2":25.78},{"t":"IX","n":"Orix Corporation","s":"Financials","r":"Japan","buy":"2025-08-06","px":23.79,"sh":16,"cost":380.64,"px2":39.16},{"t":"UBS","n":"UBS Group AG","s":"Financials","r":"Europe","buy":"2025-02-27","px":33.85,"sh":11,"cost":372.35,"px2":52.93},{"t":"PCRHY","n":"Panasonic Holdings Corp","s":"Technology","r":"Japan","buy":"2026-04-27","px":19.57,"sh":17,"cost":332.69,"px2":28.7},{"t":"SAN","n":"Banco Santander","s":"Financials","r":"Europe","buy":"2025-09-19","px":10.24,"sh":25,"cost":256.0,"px2":14.245},{"t":"ING","n":"ING Groep N.V.","s":"Financials","r":"Europe","buy":"2025-11-13","px":26.2,"sh":9,"cost":235.8,"px2":35.39},{"t":"TSEM","n":"Tower Semiconductor","s":"Technology","r":"Middle East","buy":"2026-03-24","px":180.82,"sh":2,"cost":361.64,"px2":239.86},{"t":"MUFG","n":"Mitsubishi UFJ Financial","s":"Financials","r":"Japan","buy":"2026-05-01","px":17.69,"sh":20,"cost":353.8,"px2":22.685},{"t":"BRDCY","n":"Bridgestone Corp","s":"Consumer Disc.","r":"Japan","buy":"2025-07-16","px":10.1,"sh":32,"cost":323.2,"px2":12.65},{"t":"SAFRY","n":"Safran SA","s":"Industrials","r":"Europe","buy":"2026-06-10","px":83.92,"sh":3,"cost":251.76,"px2":102.55},{"t":"IMO","n":"Imperial Oil","s":"Energy","r":"North America","buy":"2026-06-30","px":112.02,"sh":2,"cost":224.04,"px2":134.85},{"t":"TOELY","n":"Tokyo Electron","s":"Technology","r":"Japan","buy":"2026-04-23","px":143.6,"sh":2,"cost":287.2,"px2":170.67},{"t":"CRH","n":"CRH plc","s":"Materials","r":"Europe","buy":"2025-04-08","px":80.35,"sh":4,"cost":321.4,"px2":93.6},{"t":"MFG","n":"Mizuho Financial Group","s":"Financials","r":"Japan","buy":"2026-02-23","px":9.19,"sh":40,"cost":367.6,"px2":10.6162},{"t":"BBVA","n":"Banco Bilbao Vizcaya","s":"Financials","r":"Europe","buy":"2026-01-28","px":25.14,"sh":13,"cost":326.82,"px2":28.7383},{"t":"RNECY","n":"Renesas Electronics Corp","s":"Technology","r":"Japan","buy":"2026-05-01","px":10.1,"sh":30,"cost":303.0,"px2":11.39},{"t":"HMC","n":"Honda Motor Co","s":"Consumer Disc.","r":"Japan","buy":"2025-03-12","px":29.01,"sh":9,"cost":261.09,"px2":32.005},{"t":"TEVA","n":"Teva Pharmaceutical","s":"Health Care","r":"Middle East","buy":"2026-06-05","px":34.19,"sh":7,"cost":239.33,"px2":37.01},{"t":"KYOAY","n":"Kyocera Corp","s":"Technology","r":"Japan","buy":"2026-07-20","px":22.04,"sh":19,"cost":418.76,"px2":23.41},{"t":"ATEYY","n":"Advantest Corp","s":"Technology","r":"Japan","buy":"2026-08-05","px":209.06,"sh":2,"cost":418.12,"px2":217.04},{"t":"REPYY","n":"Repsol SA","s":"Energy","r":"Europe","buy":"2026-08-17","px":31.52,"sh":11,"cost":346.72,"px2":31.81},{"t":"EADSY","n":"Airbus SE","s":"Industrials","r":"Europe","buy":"2026-01-13","px":64.09,"sh":5,"cost":320.45,"px2":60.9},{"t":"SSUMY","n":"Sumitomo Corp","s":"Industrials","r":"Japan","buy":"2026-05-14","px":11.98,"sh":23,"cost":275.54,"px2":10.92},{"t":"ASML","n":"ASML Holding NV","s":"Technology","r":"Europe","buy":"2026-06-30","px":1989.4399,"sh":1,"cost":1989.44,"px2":1798.115},{"t":"KXIAY","n":"Kioxia Holdings Corporation","s":"Technology","r":"Japan","buy":"2026-08-17","px":38.75,"sh":6,"cost":232.5,"px2":33.93}],"proxies":{"SPY":{"label":"S&P 500","color":"#2a78d6","px":{"2025-01-15":592.78,"2025-01-31":601.82,"2025-02-27":585.05,"2025-03-12":558.87,"2025-04-08":496.48,"2025-07-16":624.22,"2025-08-06":632.78,"2025-09-19":663.7,"2025-11-13":672.04,"2025-11-18":660.08,"2026-01-13":693.77,"2026-01-28":695.42,"2026-02-23":682.39,"2026-03-24":653.18,"2026-04-23":708.45,"2026-04-27":715.17,"2026-05-01":720.65,"2026-05-14":748.17,"2026-06-05":737.55,"2026-06-10":725.43,"2026-06-30":746.77,"2026-07-20":742.09,"2026-08-05":769.79,"2026-08-17":772.67,"2026-08-18":767.64},"last":767.64},"QQQ":{"label":"Nasdaq 100","color":"#7b4fc9","px":{"2025-01-15":516.7,"2025-01-31":522.29,"2025-02-27":500.27,"2025-03-12":476.92,"2025-04-08":416.06,"2025-07-16":557.29,"2025-08-06":567.32,"2025-09-19":599.35,"2025-11-13":608.4,"2025-11-18":596.31,"2026-01-13":626.24,"2026-01-28":633.22,"2026-02-23":601.41,"2026-03-24":583.98,"2026-04-23":651.42,"2026-04-27":664.23,"2026-05-01":674.15,"2026-05-14":719.79,"2026-06-05":705.06,"2026-06-10":693.69,"2026-06-30":736.4,"2026-07-20":696.06,"2026-08-05":717.3,"2026-08-17":729.87,"2026-08-18":717.28},"last":717.28},"EFA":{"label":"MSCI EAFE","color":"#eb6834","px":{"2025-01-15":76.08,"2025-01-31":79.24,"2025-02-27":81.41,"2025-03-12":82.75,"2025-04-08":72.96,"2025-07-16":88.38,"2025-08-06":89.02,"2025-09-19":93.0,"2025-11-13":95.53,"2025-11-18":92.8,"2026-01-13":98.84,"2026-01-28":101.01,"2026-02-23":104.47,"2026-03-24":95.27,"2026-04-23":101.24,"2026-04-27":101.38,"2026-05-01":102.1,"2026-05-14":103.46,"2026-06-05":102.26,"2026-06-10":101.57,"2026-06-30":103.88,"2026-07-20":102.57,"2026-08-05":107.43,"2026-08-17":108.45,"2026-08-18":107.31},"last":107.31},"EWJ":{"label":"Japan","color":"#c02b2b","px":{"2025-01-15":66.27,"2025-01-31":68.31,"2025-02-27":69.0,"2025-03-12":69.52,"2025-04-08":61.65,"2025-07-16":72.02,"2025-08-06":76.03,"2025-09-19":80.79,"2025-11-13":83.01,"2025-11-18":80.78,"2026-01-13":84.45,"2026-01-28":85.21,"2026-02-23":91.39,"2026-03-24":83.28,"2026-04-23":87.07,"2026-04-27":87.68,"2026-05-01":88.3,"2026-05-14":92.06,"2026-06-05":90.72,"2026-06-10":89.29,"2026-06-30":93.27,"2026-07-20":90.43,"2026-08-05":95.16,"2026-08-17":98.17,"2026-08-18":95.46},"last":95.46},"VGK":{"label":"Europe","color":"#1baf7a","px":{"2025-01-15":64.18,"2025-01-31":67.5,"2025-02-27":69.82,"2025-03-12":71.58,"2025-04-08":62.73,"2025-07-16":77.19,"2025-08-06":76.57,"2025-09-19":79.13,"2025-11-13":81.68,"2025-11-18":79.29,"2026-01-13":85.79,"2026-01-28":87.85,"2026-02-23":89.49,"2026-03-24":80.58,"2026-04-23":86.47,"2026-04-27":86.55,"2026-05-01":87.15,"2026-05-14":87.47,"2026-06-05":87.13,"2026-06-10":86.69,"2026-06-30":88.54,"2026-07-20":87.69,"2026-08-05":91.85,"2026-08-17":92.1,"2026-08-18":91.58},"last":91.58},"ACWI":{"label":"World","color":"#eda100","px":{"2025-01-15":118.58,"2025-01-31":121.19,"2025-02-27":119.67,"2025-03-12":116.49,"2025-04-08":103.59,"2025-07-16":129.34,"2025-08-06":130.78,"2025-09-19":137.76,"2025-11-13":140.15,"2025-11-18":137.39,"2026-01-13":144.89,"2026-01-28":146.84,"2026-02-23":146.26,"2026-03-24":138.04,"2026-04-23":149.25,"2026-04-27":150.51,"2026-05-01":151.66,"2026-05-14":156.65,"2026-06-05":154.39,"2026-06-10":152.24,"2026-06-30":156.97,"2026-07-20":154.48,"2026-08-05":160.5,"2026-08-17":161.83,"2026-08-18":160.15},"last":160.15}}};
+</script>
+<script>
+/* ============================================================
+   TWO-POINT PERFORMANCE ENGINE
+   Every line needs exactly two facts: the price you paid (baked in,
+   never changes) and the price right now (Finnhub /quote, free tier).
+   There is no historical series anywhere in this file, so nothing
+   can go stale — "now" simply moves right as days pass.
+   ============================================================ */
+const P$   = id => document.getElementById(id);
+const Pesc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                   .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const Pmoney = (n,d) => '$' + Number(n).toLocaleString('en-US',
+                        {minimumFractionDigits:d===undefined?2:d, maximumFractionDigits:d===undefined?2:d});
+/* an IRR that cannot be bracketed comes back NaN; show a dash rather than 'NaN%' */
+const Ppct = (n,d) => isFinite(n) ? ((n>0?'+':'') + Number(n).toFixed(d===undefined?2:d) + '%') : '\u2014';
+const PROXY_KEYS = Object.keys(PERF.proxies);
+const PORT_NAME = "SHOURJO'S PORTFOLIO";
+
+const PS = {
+    shown:  ['SPY','EFA','EWJ'],  // which index proxies are drawn
+    filter: 'all',                // all | winners | losers | top10 | bottom10 | none
+    live:   null,                 // {stamp, q:{sym:{c,ms}}}
+    onlyCovered: true,            // drop positions Finnhub cannot price
+    hover:  null                  // ticker or proxy key under the cursor
+};
+
+/* ---------------- prices ----------------
+   Finnhub is the single source of truth for END prices. It quotes all 27
+   holdings and all 6 index proxies, so every "now" number on the page comes
+   from one source rather than being mixed with Yahoo closes — mixing sources
+   inside a single return figure is worse than being a day behind on the
+   thinly-traded ADRs, which is the only cost here.
+
+   The baked-in PERF.asOf close survives ONLY as an offline placeholder, for
+   when the page cannot reach Finnhub at all. Entry prices stay as they are:
+   they are historical and never change. */
+const ASOF_MS = Date.parse(PERF.asOf + 'T20:00:00Z');
+const isoOf = ms => new Date(ms).toISOString().slice(0,10);
+const quoteOf = sym => {
+    const q = (PS.live && PS.live.q) ? PS.live.q[sym] : null;
+    return (q && q.c > 0) ? q : null;
+};
+function pxInfo(p) {
+    const q = quoteOf(p.t);
+    if (q) return {px:q.c, ms:q.ms, live:true};
+    return {px:p.px2, ms:ASOF_MS, live:false};
+}
+function proxyInfo(sym) {
+    const q = quoteOf(sym);
+    if (q) return {px:q.c, ms:q.ms, live:true};
+    return {px:PERF.proxies[sym].last, ms:ASOF_MS, live:false};
+}
+const livePx  = p   => pxInfo(p).px;
+const proxyPx = sym => proxyInfo(sym).px;
+
+/* ---------------- coverage ----------------
+   A position is only trustworthy if Finnhub can actually price it. Three states:
+     'ok'   — a quote came back and it is recent
+     'dark' — a quote came back but has not moved in STALE_DAYS; the ticker has
+              effectively gone quiet and its price is frozen
+     'none' — Finnhub returns nothing for this symbol at all
+   'dark' and 'none' positions are frozen at an old price, so leaving them in
+   the return quietly drags it toward a number that stopped being true. When
+   PS.onlyCovered is on they are dropped from BOTH the portfolio and the
+   dollar-matched benchmark, so the comparison stays like-for-like. */
+const STALE_DAYS = 7;
+function newestMs() {
+    let ms = ASOF_MS;
+    if (PS.live && PS.live.q) Object.keys(PS.live.q).forEach(k => {
+        const q = PS.live.q[k]; if (q && q.ms > ms) ms = q.ms; });
+    return ms;
+}
+function coverage(p) {
+    if (!PS.live) return 'ok';                    /* nothing fetched yet: all equal */
+    const q = quoteOf(p.t);
+    if (!q) return 'none';                        /* Finnhub has no price at all */
+    /* a quote that has not moved in a week means the ticker has gone quiet;
+       its price is frozen and would drag the return toward a dead number */
+    return ((newestMs() - q.ms) / 86400000 > STALE_DAYS) ? 'dark' : 'ok';
+}
+const isCovered = p => coverage(p) === 'ok';
+function included() {
+    if (!PS.onlyCovered) return PERF.positions;
+    const ok = PERF.positions.filter(isCovered);
+    /* If NOTHING clears coverage, dropping the whole book would leave a $0
+       portfolio measured against a live cost basis and print -100%. That is a
+       data outage, not a loss. Fall back to the full book at its last known
+       prices, which is the same state the page shows with no quotes at all. */
+    return ok.length ? ok : PERF.positions;
+}
+function excluded() {
+    const inc = new Set(included());
+    return PERF.positions.filter(p => !inc.has(p));
+}
+/* the cost basis of whatever is actually being measured */
+const basis = () => included().reduce((s,p)=>s+p.cost, 0) || PERF.cash0;
+
+/* the right-hand edge of the chart: the newest price actually in use */
+function nowDate() {
+    let ms = ASOF_MS;
+    PERF.positions.forEach(p => { const i = pxInfo(p); if (i.ms > ms) ms = i.ms; });
+    PROXY_KEYS.forEach(sy => { const i = proxyInfo(sy); if (i.ms > ms) ms = i.ms; });
+    return new Date(ms);
+}
+
+/* how many prices are genuinely live, and how many fell back to the close */
+function priceCensus() {
+    const live=[], stale=[], none=[], dark=[];
+    PERF.positions.forEach(p => {
+        (pxInfo(p).live ? live : stale).push(p.t);
+        const c = coverage(p);
+        if (c === 'none') none.push(p.t);
+        else if (c === 'dark') dark.push(p.t);
+    });
+    const prox = PROXY_KEYS.filter(s => proxyInfo(s).live).length;
+    return {live, stale, none, dark, prox, proxTotal:PROXY_KEYS.length,
+            dropped: excluded().map(p => p.t),
+            counted: included().length, basis: basis()};
+}
+
+/* ---------------- returns ---------------- */
+const pfValue  = p => p.sh * livePx(p);
+const pfReturn = p => (livePx(p)/p.px - 1) * 100;
+
+function portValue()  { return included().reduce((s,p)=>s+pfValue(p),0); }
+function portReturn() { return (portValue()/basis() - 1) * 100; }
+
+/* Dollar-matched: the same dollars into the index on the same buy dates.
+   Both sides therefore hold identical cash before each entry, so the gap
+   between them measures selection and nothing else. */
+function benchValue(sym) {
+    const px = PERF.proxies[sym].px, now = proxyPx(sym);
+    return included().reduce((s,p)=> s + p.cost * (now / px[p.buy]), 0);
+}
+const benchReturn = sym => (benchValue(sym)/basis() - 1) * 100;
+
+/* the index's own return over ONE holding's window — "did this pick beat SPY?" */
+function benchReturnFor(p, sym) {
+    return (proxyPx(sym) / PERF.proxies[sym].px[p.buy] - 1) * 100;
+}
+
+/* money-weighted annualised rate: outflow on each buy date, one inflow now */
+function irr(endValue) {
+    const end = nowDate();
+    const yrs = d => (end - new Date(d+'T21:00:00Z')) / (365.25*86400000);
+    const fv = r => included().reduce((s,p)=> s - p.cost*Math.pow(1+r, yrs(p.buy)), 0) + endValue;
+    let lo=-0.95, hi=8;
+    if (fv(lo)*fv(hi) > 0) return NaN;
+    for (let k=0;k<200;k++){ const m=(lo+hi)/2; if (fv(lo)*fv(m)<=0) hi=m; else lo=m; }
+    return (lo+hi)/2*100;
+}
+
+/* which holdings the current filter admits */
+function visibleHoldings() {
+    const all = included().slice().sort((a,b)=>pfReturn(b)-pfReturn(a));
+    switch (PS.filter) {
+        case 'none':     return [];
+        case 'winners':  return all.filter(p=>pfReturn(p) >= 0);
+        case 'losers':   return all.filter(p=>pfReturn(p) <  0);
+        case 'top10':    return all.slice(0,10);
+        case 'bottom10': return all.slice(-10);
+        default:         return all;
+    }
+}
+
+/* ============================================================
+   SLOPE CHART — one straight segment per line, entry to now
+   ============================================================ */
+let SLOPE = {segs:[], geom:null};
+
+function drawSlope(elId, opts) {
+    opts = opts || {};
+    const W = opts.W || 980, H = opts.H || 460;
+    const ML = 44, MR = opts.MR || 168, MT = 16, MB = 28;
+    const iw = W-ML-MR, ih = H-MT-MB;
+    const RX = W-MR;                                  /* the "now" edge */
+
+    const t1 = nowDate().getTime();
+    const t0 = Math.min(...PERF.positions.map(p=>new Date(p.buy+'T21:00:00Z').getTime()));
+    const span = Math.max(1, t1-t0);
+    const X = ms => ML + (ms-t0)/span*iw;
+
+    const vis = visibleHoldings();
+    const holds = vis.map(p => ({
+        kind:'h', key:p.t, label:p.t, p, ret:pfReturn(p),
+        x0:X(new Date(p.buy+'T21:00:00Z').getTime())
+    }));
+    const marks = [{kind:'p', key:'__PORT__', label:PORT_NAME, color:'#0b0b0b', w:3.2,
+                    x0:X(t0), ret:portReturn()}];
+    PS.shown.forEach(sym => marks.push({kind:'b', key:sym, label:PERF.proxies[sym].label,
+                    color:PERF.proxies[sym].color, w:2.2, x0:X(t0), ret:benchReturn(sym)}));
+
+    const drawn = marks.concat(holds);
+    drawn.forEach(d => d.v = 100*(1+d.ret/100));
+
+    /* --- vertical placement of the right-hand endpoints ---------------
+       Endpoints are spaced evenly by rank rather than by value. A true linear
+       axis crowds wherever returns cluster, and 22 of these 27 land between 0%
+       and +50%, which piled most of the book into a third of the height. The
+       axis therefore is not linear, so its numbers are hidden and every
+       endpoint carries its real return in its own label instead. */
+    const order = drawn.slice().sort((a,b)=>b.v-a.v);
+    const n = order.length, top = MT+10, bot = MT+ih-10;
+    const gap = n>1 ? (bot-top)/(n-1) : 0;
+    order.forEach((d,i)=> d._y = top + i*gap);
+    const yEnd = d => d._y;
+    /* the left end sits where a zero-return line would rank, so the fan keeps
+       an honest shape: winners open upward, losers downward */
+    const zeroRank = order.filter(d=>d.v>100).length;
+    const yZero = top + Math.min(n-1, Math.max(0, zeroRank)) * gap;
+    const Y = () => yZero;
+    const y100 = Y(100);
+
+    let g = '';
+
+    /* the only meaningful horizontal reference left is break-even */
+    g += '<line x1="'+ML+'" y1="'+y100.toFixed(1)+'" x2="'+RX+'" y2="'+y100.toFixed(1)
+       + '" stroke="#8a8a8a" stroke-width="1" stroke-dasharray="3 3"/>'
+       + '<text x="'+(ML-6)+'" y="'+(y100+3.5).toFixed(1)+'" font-size="9" fill="#767570" '
+       + 'text-anchor="end">100</text>';
+
+    /* month ticks */
+    const months = [];
+    let cur = new Date(t0); cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth()+1, 1));
+    while (cur.getTime() <= t1) { months.push(new Date(cur));
+        cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth()+1, 1)); }
+    const every = Math.max(1, Math.ceil(months.length/9));
+    months.filter((_,i)=>i%every===0).forEach(m => {
+        const x = X(m.getTime());
+        g += '<line x1="'+x.toFixed(1)+'" y1="'+MT+'" x2="'+x.toFixed(1)+'" y2="'+(MT+ih)
+           + '" stroke="#f5f4ee" stroke-width="1"/>'
+           + '<text x="'+x.toFixed(1)+'" y="'+(H-MB+14)+'" font-size="9" fill="#767570" '
+           + 'text-anchor="middle">'+monthLabel(m)+'</text>';
+    });
+
+    /* ---------- label column, collision-nudged ---------- */
+    const labels = drawn.map(d => ({d, y:yEnd(d), key:d.key,
+        big: d.kind!=='h',
+        color: d.kind==='h' ? (d.ret>=0?'#0b7a3b':'#c02b2b') : d.color,
+        txt: (d.kind==='h' ? d.label : d.label) + '  ' + Ppct(d.ret, d.kind==='h'?0:1)}));
+    labels.sort((a,b)=>a.y-b.y);
+    /* spacing adapts to the room available, so the column can never overflow
+       the plot no matter how many lines the filter admits */
+    const LH = Math.min(10.4, (ih-6)/Math.max(1, labels.length-1));
+    for (let i=1;i<labels.length;i++)
+        if (labels[i].y - labels[i-1].y < LH) labels[i].y = labels[i-1].y + LH;
+    const over = labels.length ? labels[labels.length-1].y - (MT+ih-3) : 0;
+    if (over > 0) labels.forEach(l => l.y -= over);
+    const under = labels.length ? (MT+3) - labels[0].y : 0;
+    if (under > 0) labels.forEach(l => l.y += under);
+
+    /* ---------- the lines ---------- */
+    const segs = [];
+    drawn.forEach(d => {
+        const lab = labels.find(l=>l.key===d.key);
+        const y1 = lab ? lab.y : yEnd(d);           /* land on the label, so both agree */
+        const y0 = y100;
+        const col = d.kind==='h' ? (d.ret>=0?'#0b7a3b':'#c02b2b') : d.color;
+        const w   = d.kind==='h' ? 1.15 : d.w;
+        const op  = d.kind==='h' ? 0.5 : 1;
+        const fresh = d.kind==='h' ? pxInfo(d.p).live
+                    : d.kind==='b' ? proxyInfo(d.key).live : true;
+        const dash = (PS.live && !fresh) ? ' stroke-dasharray="5 3"' : '';
+        /* a fat transparent twin sits under each line purely as a mouse target */
+        g += '<line class="shit" data-key="'+Pesc(d.key)+'" x1="'+d.x0.toFixed(1)+'" y1="'+y0.toFixed(1)
+           + '" x2="'+RX.toFixed(1)+'" y2="'+y1.toFixed(1)+'" stroke="transparent" stroke-width="11"/>'
+           + '<line class="sline" data-key="'+Pesc(d.key)+'" data-w="'+w+'" data-op="'+op+'" '
+           + 'x1="'+d.x0.toFixed(1)+'" y1="'+y0.toFixed(1)+'" x2="'+RX.toFixed(1)+'" y2="'+y1.toFixed(1)
+           + '" stroke="'+col+'" stroke-width="'+w+'" stroke-linecap="round" opacity="'+op+'"'+dash+'/>';
+        if (d.kind==='h')
+            g += '<circle class="sdot" data-key="'+Pesc(d.key)+'" cx="'+d.x0.toFixed(1)+'" cy="'+y0.toFixed(1)
+               + '" r="1.7" fill="'+col+'" opacity="0.8"/>';
+        segs.push({key:d.key, kind:d.kind, d, x0:d.x0, y0, x1:RX, y1});
+    });
+
+    /* ---------- draw the labels ---------- */
+    labels.forEach(l => {
+        const yTrue = yEnd(l.d);
+        if (Math.abs(yTrue - l.y) > 1.5)            /* leader when nudged */
+            g += '<line class="slead" data-key="'+Pesc(l.key)+'" x1="'+RX+'" y1="'+yTrue.toFixed(1)
+               + '" x2="'+(RX+5)+'" y2="'+l.y.toFixed(1)+'" stroke="'+l.color
+               + '" stroke-width="0.7" opacity="0.45"/>';
+        g += '<text x="'+(RX+8)+'" y="'+(l.y+3.4).toFixed(1)+'" font-size="'+(l.big?10:8.6)
+           + '" fill="'+l.color+'"'+(l.big?' font-weight="bold"':'')
+           + ' opacity="1" style="font-variant-numeric:tabular-nums;cursor:pointer" '
+           + 'class="slab" data-big="'+(l.big?1:0)+'" data-key="'+Pesc(l.key)+'">'+Pesc(l.txt)+'</text>';
+    });
+
+    /* "NOW" rule */
+    g += '<line x1="'+RX+'" y1="'+MT+'" x2="'+RX+'" y2="'+(MT+ih)+'" stroke="#0b0b0b" stroke-width="1"/>'
+       + '<text x="'+RX+'" y="'+(H-MB+14)+'" font-size="8.5" fill="#0b0b0b" text-anchor="middle" '
+       + 'font-weight="bold">NOW</text>'
+       + '<text x="'+ML+'" y="'+(MT-5)+'" font-size="8.5" fill="#898781">'
+       + 'entry = 100  ·  endpoints spaced evenly by rank, labels carry the real return</text>';
+
+    g = '<rect id="'+elId+'_hot" x="'+ML+'" y="'+MT+'" width="'+iw+'" height="'+ih
+      + '" fill="transparent" style="cursor:'+(PS.clickHref?'pointer':'crosshair')+'"/>' + g;
+
+    P$(elId).innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;" role="img" '
+        + 'aria-label="Each holding and index drawn from its entry price to its live price">'+g+'</svg>';
+
+    SLOPE = {segs, geom:{W,MR,MT,ih,RX,ML}};
+    wireSlope(elId);
+}
+
+function monthLabel(d) {
+    const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return d.getUTCMonth()===0 ? "'"+String(d.getUTCFullYear()).slice(2) : M[d.getUTCMonth()];
+}
+
+function applyHover(key) {
+    PS.hover = key || null;
+    const root = SLOPE.root; if (!root) return;
+    root.querySelectorAll('.sline').forEach(el => {
+        const on = key === el.dataset.key, dim = key && !on;
+        const bw = parseFloat(el.dataset.w), bo = parseFloat(el.dataset.op);
+        el.setAttribute('stroke-width', on ? (bw<1.5 ? 3 : bw+1.4) : bw);
+        el.setAttribute('opacity', dim ? 0.10 : (on ? 1 : bo));
+    });
+    root.querySelectorAll('.sdot').forEach(el => {
+        const on = key === el.dataset.key, dim = key && !on;
+        el.setAttribute('r', on ? 3.4 : 1.7);
+        el.setAttribute('opacity', dim ? 0.12 : 0.8);
+    });
+    root.querySelectorAll('.slab').forEach(el => {
+        const on = key === el.dataset.key, dim = key && !on;
+        el.setAttribute('opacity', dim ? 0.28 : 1);
+        el.setAttribute('font-weight', on || el.dataset.big==='1' ? 'bold' : 'normal');
+    });
+    root.querySelectorAll('.slead').forEach(el => {
+        const dim = key && key !== el.dataset.key;
+        el.setAttribute('opacity', dim ? 0.12 : 0.45);
+    });
+}
+
+function wireSlope(elId) {
+    const hot = P$(elId+'_hot'); if (!hot) return;
+    const svg = hot.ownerSVGElement;
+    SLOPE.root = svg;
+    let downX = 0;
+
+    const enter = (ev, key) => {
+        applyHover(key);
+        const s = SLOPE.segs.find(x=>x.key===key);
+        if (s) showSlopeTip(ev, s);
+    };
+    const leave = () => { applyHover(null); hideSlopeTip(); };
+
+    /* labels and fat transparent line-twins are both easy mouse targets */
+    svg.querySelectorAll('.slab, .shit').forEach(el => {
+        el.addEventListener('mousemove', ev => enter(ev, el.dataset.key));
+        el.addEventListener('mouseleave', leave);
+        el.addEventListener('click', ev => {
+            ev.stopPropagation();
+            if (PS.clickHref) location.href = PS.clickHref;
+        });
+    });
+
+    /* anywhere else in the plot: snap to whichever line is nearest */
+    hot.addEventListener('mousemove', ev => {
+        const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
+        const sx = (ev.clientX-r.left)/r.width*vb.width;
+        const sy = (ev.clientY-r.top )/r.height*vb.height;
+        let best=null, bd=1e9;
+        SLOPE.segs.forEach(s => {
+            if (sx < s.x0-3 || sx > s.x1+3) return;
+            const f = (sx-s.x0)/Math.max(1,(s.x1-s.x0));
+            const d = Math.abs((s.y0 + (s.y1-s.y0)*f) - sy);
+            if (d < bd) { bd = d; best = s; }
+        });
+        if (best && bd < 14) enter(ev, best.key); else leave();
+    });
+    hot.addEventListener('mouseleave', leave);
+    hot.addEventListener('mousedown', ev => { downX = ev.clientX; });
+    hot.addEventListener('mouseup', ev => {
+        if (Math.abs(ev.clientX-downX) < 5 && PS.clickHref) location.href = PS.clickHref;
+    });
+}
+
+let STIP = null;
+function slopeTipEl(){ if(!STIP){STIP=document.createElement('div');STIP.className='tip';document.body.appendChild(STIP);} return STIP; }
+function showSlopeTip(ev, s) {
+    const t = slopeTipEl(), d = s.d;
+    let h;
+    if (s.kind === 'h') {
+        const p = d.p, days = Math.round((nowDate()-new Date(p.buy+'T21:00:00Z'))/86400000);
+        const vs = benchReturnFor(p,'SPY');
+        h = '<div class="th">'+Pesc(p.t)+' &mdash; '+Pesc(p.n)+'</div>'
+          + 'bought <b>'+p.buy+'</b> at '+Pmoney(p.px)+'<br>'
+          + 'now '+Pmoney(livePx(p))+' &times; '+p.sh+' sh = <b>'+Pmoney(pfValue(p))+'</b>'
+          + ' <span style="color:#888">('+(pxInfo(p).live
+                ? 'Finnhub '+isoOf(pxInfo(p).ms)
+                : 'no quote &mdash; '+PERF.asOf+' close')+')</span><br>'
+          + '<span style="color:'+(d.ret>=0?'#0b7a3b':'#c02b2b')+'"><b>'+Ppct(d.ret)+'</b></span>'
+          + ' &middot; S&amp;P over same '+days+'d '+Ppct(vs,1)+'<br>'
+          + '<b style="color:'+(d.ret>=vs?'#0b7a3b':'#c02b2b')+'">'
+          + (d.ret>=vs?'beat the index':'lost to the index')+' by '
+          + Math.abs(d.ret-vs).toFixed(1)+' pts</b>';
+    } else {
+        const val = s.key==='__PORT__' ? portValue() : benchValue(s.key);
+        h = '<div class="th">'+Pesc(d.label)+'</div>'
+          + Pmoney(PERF.cash0)+' &rarr; <b>'+Pmoney(val)+'</b><br>'
+          + '<span style="color:'+(d.ret>=0?'#0b7a3b':'#c02b2b')+'"><b>'+Ppct(d.ret)+'</b></span>'
+          + ' total &middot; '+Ppct(irr(val),1)+' p.a.'
+          + (s.key==='__PORT__' ? '' : '<br><span style="color:#777">same dollars, same buy dates</span>');
+    }
+    t.innerHTML = h; t.style.display='block';
+    let x=ev.clientX+14, y=ev.clientY+14;
+    if (x+t.offsetWidth  > innerWidth -8) x = ev.clientX-t.offsetWidth -14;
+    if (y+t.offsetHeight > innerHeight-8) y = ev.clientY-t.offsetHeight-14;
+    t.style.left=x+'px'; t.style.top=y+'px';
+}
+function hideSlopeTip(){ if (STIP) STIP.style.display='none'; }
+
+/* ============================================================
+   LIVE QUOTES — 27 tickers + 6 ETF proxies = 33 calls
+   ============================================================ */
+async function pbatched(items, size, gap, fn) {
+    const out=[];
+    for (let i=0;i<items.length;i+=size) {
+        out.push(...await Promise.all(items.slice(i,i+size).map(fn)));
+        if (i+size<items.length) await new Promise(r=>setTimeout(r,gap));
+    }
+    return out;
+}
+let REFRESHING = false;
+
+/* Fetch every quote we need and return a {SYM: {c, ms}} map.
+   Anything another page already fetched and is still fresh is reused; only the
+   gaps cost a Finnhub call. */
+async function fetchQuoteMap(syms) {
+    /* 1. whatever another page already fetched, if it is still fresh */
+    const have = {}, need = [];
+    syms.forEach(s => { const c = qcacheGet(s); if (c) have[s] = c; else need.push(s); });
+    if (!need.length) return {q:have, via:'cache'};
+
+    if (typeof FINNHUB_API_KEY === 'undefined' || !FINNHUB_API_KEY)
+        return {q:have, via:'cache', err:'no Finnhub key'};
+
+    const one = async sym => {
+        try {
+            const r = await fetch(FINNHUB_BASE+'/quote?symbol='+encodeURIComponent(sym)+'&token='+FINNHUB_API_KEY);
+            if (!r.ok) return {sym, err: r.status===429?'rate limited'
+                             : (r.status===401||r.status===403)?'not on plan' : 'HTTP '+r.status};
+            const d = await r.json();
+            if (!(d && typeof d.c==='number' && d.c>0)) return {sym, err:'no quote'};
+            return {sym, c:d.c, ms:(typeof d.t==='number'&&d.t>0)?d.t*1000:Date.now()};
+        } catch(e) { return {sym, err:'network/CORS'}; }
+    };
+    const res = await pbatched(need, 6, 260, one);
+    const fresh = {}, errs = {};
+    res.forEach(r => { if (r.c) fresh[r.sym]={c:r.c, ms:r.ms}; else errs[r.err]=(errs[r.err]||0)+1; });
+    qcachePut(fresh);                       /* pay it forward to the other pages */
+    return {q: Object.assign(have, fresh),
+            via: Object.keys(have).length ? 'cache+live' : 'direct',
+            err: Object.keys(errs).map(k=>errs[k]+' '+k).join(', ')};
+}
+
+async function refreshLive(statusId, done) {
+    if (REFRESHING) return;
+    REFRESHING = true;
+    document.querySelectorAll('.rf').forEach(b => { b.disabled = true; b.dataset.t = b.textContent; b.textContent='…'; });
+    const st = P$(statusId);
+    if (st) st.textContent = 'fetching live quotes…';
+
+    const syms = PERF.positions.map(p=>p.t).concat(PROXY_KEYS);
+    const got  = await fetchQuoteMap(syms);
+
+    const q = (PS.live && PS.live.q) ? PS.live.q : {};
+    Object.assign(q, got.q);
+    PS.live = {stamp:new Date(), q, via:got.via};
+
+    /* "live" counts only quotes newer than the baked-in close, not quotes received */
+    const c = priceCensus();
+    const msg = c.live.length+'/'+PERF.positions.length+' priced by Finnhub'
+              + (c.stale.length ? ' · '+c.stale.length+' no quote, held at '+PERF.asOf
+                                  +' close ('+c.stale.join(' ')+')' : '')
+              + (c.dropped.length ? ' · '+c.dropped.length+' dropped from the return' : '')
+              + ' · indices '+c.prox+'/'+c.proxTotal
+              + ' · '+PS.live.stamp.toLocaleTimeString()
+              + (got.err ? ' ('+got.err+')' : '');
+    if (st) st.textContent = msg;
+    document.querySelectorAll('.rfstatus').forEach(e => e.textContent = msg);
+    document.querySelectorAll('.rf').forEach(b => { b.disabled=false; b.textContent = b.dataset.t || 'REFRESH LIVE'; });
+    REFRESHING = false;
+    if (done) done();
+}
+
+/* wire every REFRESH LIVE button on the page, wherever it sits */
+function wireRefreshButtons(statusId, done) {
+    document.querySelectorAll('.rf').forEach(b =>
+        b.addEventListener('click', ev => { ev.stopPropagation(); ev.preventDefault();
+                                            refreshLive(statusId, done); }));
+}
+
+</script>
+</body>
+</html>

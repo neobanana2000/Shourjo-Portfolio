@@ -1,0 +1,2169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRH plc - DCF Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: monospace;
+            background: #fff;
+            color: #000;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            border: 2px solid #000;
+            padding: 20px;
+            margin-bottom: 30px;
+            background: #f5f5f5;
+        }
+        header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .back-btn {
+            display: inline-block;
+            padding: 8px 15px;
+            border: 2px solid #000;
+            background: #fff;
+            font-family: monospace;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-decoration: none;
+            color: #000;
+        }
+        .back-btn:hover {
+            background: #f0f0f0;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .header-title { flex: 1; min-width: 280px; }
+        .headline-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+        .stat {
+            border: 2px solid #000;
+            background: #fff;
+            padding: 8px 14px;
+            min-width: 120px;
+            text-align: right;
+        }
+        .stat-label { font-size: 9px; font-weight: bold; letter-spacing: 1px; }
+        .stat-value { font-size: 24px; font-weight: bold; line-height: 1.2; }
+        .stat-sub   { font-size: 9px; color: #666; }
+        .baseline-box {
+            border: 2px solid #000;
+            background: #fff;
+            margin-bottom: 20px;
+        }
+        .baseline-box-header {
+            border-bottom: 2px solid #000;
+            padding: 12px 20px;
+            background: #000;
+            color: #fff;
+            font-weight: bold;
+            font-size: 13px;
+            letter-spacing: 1px;
+        }
+        .baseline-box-body { padding: 15px 20px 20px 20px; }
+        .baseline-table { margin: 0 0 5px 0; font-size: 11px; }
+        .baseline-table td { border: none; border-bottom: 1px solid #ddd; padding: 5px 8px; }
+        .baseline-table td:first-child { font-weight: bold; width: 190px; }
+        .price-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .price-status {
+            flex: 1;
+            font-size: 11px;
+            padding-left: 10px;
+            border-left: 3px solid #999;
+        }
+        .refresh-btn {
+            flex-shrink: 0;
+            padding: 10px 20px;
+            border: 2px solid #000;
+            background: #fff;
+            font-family: monospace;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .refresh-btn:hover {
+            background: #f0f0f0;
+        }
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: default;
+        }
+        .grp-head {
+            font-size: 13px;
+            font-weight: bold;
+            margin: 25px 0 4px 0;
+            padding: 6px 10px;
+            background: #000;
+            color: #fff;
+        }
+        .grp-sub {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 18px 0 4px 0;
+            border-bottom: 2px solid #000;
+        }
+        .grp-note { font-size: 10px; color: #666; margin-bottom: 8px; }
+        tr.changed-row td { background: #ffe9a8; }
+        .section {
+            border: 2px solid #000;
+            margin-bottom: 20px;
+            background: #fafafa;
+        }
+        .section-header {
+            border-bottom: 2px solid #000;
+            padding: 15px 20px;
+            cursor: pointer;
+            background: #f0f0f0;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .section-header:hover {
+            background: #e0e0e0;
+        }
+        .section-title {
+            flex: 1;
+            font-size: 15px;
+        }
+        .section-toggle {
+            font-size: 18px;
+            width: 30px;
+            text-align: center;
+            margin-left: 10px;
+        }
+        .section-content {
+            padding: 20px;
+            display: none;
+        }
+        .section-content.active {
+            display: block;
+        }
+        .subsection {
+            margin-bottom: 20px;
+            border-left: 3px solid #000;
+            padding-left: 15px;
+        }
+        .subsection h3 {
+            font-size: 13px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .calculation {
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 12px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        .formula {
+            background: #fff;
+            border-left: 4px solid #000;
+            padding: 12px;
+            margin: 10px 0;
+            font-size: 11px;
+            font-style: italic;
+        }
+        .big-formula {
+            background: #fff;
+            border: 3px solid #000;
+            padding: 25px;
+            margin: 20px 0;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 2.5;
+        }
+        .formula-element {
+            display: inline-block;
+            margin: 0 8px;
+            position: relative;
+        }
+        .formula-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #000;
+        }
+        .formula-label {
+            font-size: 9px;
+            color: #666;
+            position: absolute;
+            bottom: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+        }
+        .formula-blank {
+            border-bottom: 3px solid #000;
+            padding: 0 20px;
+            min-width: 80px;
+            display: inline-block;
+        }
+        .result {
+            background: #f0f0f0;
+            border: 2px solid #000;
+            padding: 15px;
+            margin: 15px 0;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 12px;
+        }
+        table th, table td {
+            border: 1px solid #000;
+            padding: 10px;
+            text-align: right;
+        }
+        table th {
+            background: #f5f5f5;
+            font-weight: bold;
+        }
+        table td:first-child, table th:first-child {
+            text-align: left;
+        }
+        .dcf-formula {
+            background: #fff;
+            border: 3px solid #000;
+            padding: 20px;
+            margin: 20px 0;
+            font-size: 13px;
+        }
+        .sensitivity-table {
+            margin-top: 30px;
+            font-size: 11px;
+        }
+        .sensitivity-table table {
+            font-size: 11px;
+        }
+        .source {
+            font-size: 10px;
+            color: #666;
+            margin-top: 8px;
+            font-style: italic;
+        }
+        a {
+            color: #0066cc;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        a:hover {
+            color: #0052a3;
+        }
+        .source-link {
+            display: inline-block;
+            margin-right: 15px;
+            font-size: 10px;
+        }
+        .source-links {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #ccc;
+        }
+        .reference-box {
+            background: #fff;
+            border: 2px solid #000;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .ddm-timeline {
+            background: #fff;
+            border: 2px solid #000;
+            padding: 30px 20px;
+            margin: 20px 0;
+            font-size: 11px;
+            line-height: 1.8;
+            overflow-x: auto;
+        }
+        .timeline-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .timeline-start {
+            text-align: center;
+            min-width: 100px;
+        }
+        .timeline-dividends {
+            display: flex;
+            justify-content: space-around;
+            flex: 1;
+            margin: 0 20px;
+            position: relative;
+        }
+        .dividend-column {
+            text-align: center;
+            min-width: 70px;
+        }
+        .dividend-value {
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        .timeline-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 20px 0;
+            font-size: 10px;
+            color: #666;
+        }
+        .timeline-line-segment {
+            flex: 1;
+            border-bottom: 2px solid #000;
+            position: relative;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .timeline-line-tick {
+            width: 2px;
+            height: 15px;
+            background: #000;
+            position: absolute;
+        }
+        .discount-factors {
+            display: flex;
+            justify-content: space-around;
+            flex: 1;
+            margin: 0 20px;
+            text-align: center;
+        }
+        .discount-column {
+            min-width: 70px;
+            font-size: 10px;
+            color: #333;
+        }
+        .terminal-value-section {
+            text-align: right;
+            margin-left: 20px;
+            border-left: 2px solid #000;
+            padding-left: 15px;
+        }
+        .terminal-formula {
+            font-size: 10px;
+            font-weight: bold;
+            line-height: 1.6;
+        }
+
+        .filing-panel {
+            border: 2px solid #000;
+            background: #fff;
+            margin-bottom: 20px;
+        }
+        .filing-panel-header {
+            border-bottom: 2px solid #000;
+            padding: 15px 20px;
+            background: #f0f0f0;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .filing-panel-header:hover { background: #e0e0e0; }
+        .filing-panel-body { padding: 20px; display: none; }
+        .filing-panel-body.active { display: block; }
+        .dropzone {
+            border: 3px dashed #000;
+            background: #fafafa;
+            padding: 40px 20px;
+            text-align: center;
+            font-size: 13px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .dropzone.dragover { background: #e8e8e8; border-style: solid; }
+        .dropzone strong { font-size: 15px; display: block; margin-bottom: 8px; }
+        .dropzone .hint { font-size: 11px; color: #666; margin-top: 10px; }
+        .parse-log {
+            margin-top: 15px;
+            font-size: 11px;
+            border-left: 3px solid #000;
+            padding-left: 10px;
+            white-space: pre-wrap;
+        }
+        .review { margin-top: 20px; display: none; }
+        .review.active { display: block; }
+        .review table { font-size: 11px; }
+        .review input {
+            font-family: monospace;
+            font-size: 11px;
+            width: 100px;
+            padding: 4px;
+            border: 1px solid #000;
+            text-align: right;
+        }
+        .tag { font-size: 9px; color: #666; word-break: break-all; }
+        .badge {
+            display: inline-block;
+            padding: 1px 6px;
+            font-size: 9px;
+            font-weight: bold;
+            border: 1px solid #000;
+        }
+        .badge.found   { background: #fff; }
+        .badge.missing { background: #000; color: #fff; }
+        .badge.changed { background: #ffe9a8; }
+        .warn {
+            border: 2px solid #c00;
+            color: #c00;
+            padding: 10px;
+            margin: 15px 0;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .btn-row { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .action-btn {
+            padding: 10px 18px;
+            border: 2px solid #000;
+            background: #fff;
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .action-btn:hover  { background: #f0f0f0; }
+        .action-btn:disabled { opacity: 0.4; cursor: default; }
+        .action-btn.primary { background: #000; color: #fff; }
+        .action-btn.primary:hover { background: #333; }
+        .model-banner {
+            border: 2px solid #000;
+            background: #ffe9a8;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            display: none;
+        }
+        .model-banner.active { display: block; }
+        select.period-select {
+            font-family: monospace;
+            font-size: 12px;
+            padding: 6px;
+            border: 2px solid #000;
+            background: #fff;
+        }
+
+        .topbar { border:3px solid #000; background:#fff; padding:10px 15px;
+                  margin-bottom:16px; display:flex; align-items:center;
+                  justify-content:space-between; gap:14px; flex-wrap:wrap; }
+        .topbar h1 { font-size:21px; letter-spacing:2px; white-space:nowrap; margin:0; }
+        .sitenav { display:flex; gap:8px; flex-wrap:wrap; }
+        /* no letter-spacing here: .top a on the home and performance pages has none,
+           and 1px across "PERFORMANCE METRICS" made this bar 19px wider than theirs */
+        .sitenav a { padding:8px 15px; border:2px solid #000; background:#000; color:#fff;
+                     font-family:inherit; font-size:12px; font-weight:bold;
+                     text-decoration:none; white-space:nowrap; }
+        .sitenav a:hover { background:#fff; color:#000; }
+        /* the page you are on is the inverted one, so it reads as "you are here" */
+        .sitenav a.here { background:#fff; color:#000; cursor:default; }
+        @media (max-width:700px) {
+            .topbar { flex-direction:column; align-items:flex-start; }
+            .topbar h1 { font-size:16px; letter-spacing:1px; }
+        }
+
+        /* same treatment for the buttons on this page */
+        .dcf-btn, .refresh-btn { background:#000 !important; color:#fff !important; }
+        .dcf-btn:hover, .refresh-btn:hover { background:#fff !important; color:#000 !important; }
+        .dcf-btn:disabled, .refresh-btn:disabled { opacity:.4; }
+
+        body { font-family:'Courier New', Courier, monospace; background:#f5f5f5; }
+        .container > header { background:#fff; }
+        .refresh-btn:disabled { opacity:.45; }
+        @media (max-width:700px) {
+            body { padding:12px; }
+            header h1 { font-size:18px; }
+            .back-btn { font-size:11px; padding:7px 10px; }
+            table { font-size:10px; }
+            table th, table td { padding:6px 4px; }
+        }
+</style>
+</head>
+<body>
+    <div class="container">
+        <div class="topbar"><h1>SHOURJO'S PORTFOLIO</h1><nav class="sitenav"><a href="index.html">HOME</a><a href="performance.html">PERFORMANCE METRICS</a><a href="holdings.html">HOLDINGS</a></nav></div>
+        <header>
+            <div class="header-top">
+                <div class="header-title">
+                    <h1>CRH PLC - DCF ANALYSIS</h1>
+                </div>
+                <div class="headline-stats">
+                    <div class="stat">
+                        <div class="stat-label">INTRINSIC VALUE</div>
+                        <div class="stat-value" id="hdrIntrinsic">$76.95</div>
+                        <div class="stat-sub">per share</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">CURRENT PRICE</div>
+                        <div class="stat-value" id="hdrPrice">$18.50</div>
+                        <div class="stat-sub" id="hdrPriceSrc">loading...</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-label">UPSIDE</div>
+                        <div class="stat-value" id="hdrUpside">+316%</div>
+                        <div class="stat-sub">vs market</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <div class="price-controls">
+            <div id="priceStatus" class="price-status">loading price...</div>
+            <button id="refreshPriceBtn" class="refresh-btn" onclick="fetchCurrentPrice()">REFRESH CRH</button>
+        </div>
+
+        <div class="model-banner" id="modelBanner"></div>
+        <div class="baseline-box">
+            <div class="baseline-box-header">DCF BASELINE SOURCE</div>
+            <div class="baseline-box-body">
+                <table class="baseline-table">
+                    <tbody id="baselineSrcRows"></tbody>
+                </table>
+        <div class="filing-panel" style="margin-top:15px;">
+            <div class="filing-panel-header" onclick="togglePanel()">
+                <div>EDIT MODEL</div>
+                <div class="section-toggle" id="filingToggle">&#9654;</div>
+            </div>
+            <div class="filing-panel-body" id="filingBody">
+                <!-- ---------- upload ---------- -->
+                <h3 class="grp-head">UPLOAD A NEW SEC FILING</h3>
+                <p class="grp-note">Drops new numbers into the FROM THE FILING block below. Assumptions are left alone &mdash; you maintain those yourself. Nothing changes until you press APPLY CHANGES.</p>
+                <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                    <strong>DROP AN SEC FILING HERE</strong>
+                    <div class="hint">
+                        <strong>Must be a .htm filing downloaded from
+                        <a href="https://www.sec.gov/search-filings" target="_blank" onclick="event.stopPropagation();">sec.gov/search-filings</a></strong><br>
+                        A <strong>10-K</strong> (annual) or <strong>10-Q</strong> (quarterly).<br>
+                        Open the filing and save the main document &mdash; the large .htm containing the financial
+                        statements. Not FilingSummary.xml, not an R*.htm exhibit, not the plain-text wrapper,
+                        and not a PDF or print-to-file copy.<br>
+                        It reads the inline XBRL tags SEC filings carry, so filings from roughly 2019 onward work.
+                    </div>
+                </div>
+                <input type="file" id="fileInput" accept=".htm,.html,.txt" style="display:none">
+                <div id="periodWrap" style="margin: 15px 0; font-size: 12px; display: none;">
+                    <strong>Reporting period to use:</strong>
+                    <select class="period-select" id="periodSelect" onchange="onPeriodChange()"></select>
+                    <span id="periodNote" style="font-size: 11px; color: #666;"></span>
+                </div>
+                <div class="parse-log" id="parseLog" style="display:none;"></div>
+                <div id="reviewWarn"></div>
+                <!-- ---------- group 1 : filing ---------- -->
+                <h3 class="grp-head">FROM THE FILING</h3>
+                <p class="grp-note">Reported figures. A new filing overwrites these.</p>
+                <table>
+                    <thead><tr><th>Input</th><th>Value</th><th>Status</th><th>Source</th></tr></thead>
+                    <tbody id="filingRows"></tbody>
+                </table>
+                <!-- ---------- group 2 : assumptions ---------- -->
+                <h3 class="grp-head">ASSUMPTIONS &mdash; NOT IN THE FILING</h3>
+                <p class="grp-note">Judgement and market data. Uploading a filing never touches these.</p>
+                <table>
+                    <thead><tr><th>Input</th><th>Value</th><th>Status</th><th>Used in</th><th>Note</th></tr></thead>
+                    <tbody id="assumpRows"></tbody>
+                </table>
+                <h4 class="grp-sub">Business segment mix &rarr; unlevered beta</h4>
+                <p class="grp-note">Enter each segment as a % of revenue. Anything short of 100% is picked up automatically by a residual Other row at the generic beta.</p>
+                <table>
+                    <thead><tr><th>Segment</th><th>% of Revenue</th><th>Unlevered Beta</th><th></th></tr></thead>
+                    <tbody id="segEditRows"></tbody>
+                </table>
+                <button class="action-btn" style="font-size:11px;padding:5px 10px;" onclick="addSeg()">+ ADD SEGMENT</button>
+                <h4 class="grp-sub">Geographic mix &rarr; country risk premium</h4>
+                <p class="grp-note">Same idea &mdash; percentages, with a residual Other row at the generic CDS spread.</p>
+                <table>
+                    <thead><tr><th>Region</th><th>% of Revenue</th><th>CDS Spread (%)</th><th></th></tr></thead>
+                    <tbody id="regEditRows"></tbody>
+                </table>
+                <button class="action-btn" style="font-size:11px;padding:5px 10px;" onclick="addReg()">+ ADD REGION</button>
+                <!-- ---------- derived ---------- -->
+                <h3 class="grp-head">CALCULATED FROM THE ABOVE</h3>
+                <p class="grp-note">Outputs, not inputs. Change the bases above and these move.</p>
+                <table>
+                    <thead><tr><th>Value</th><th>Result</th><th>Built from</th></tr></thead>
+                    <tbody id="derivedRows"></tbody>
+                </table>
+                <!-- ---------- actions ---------- -->
+                <div class="btn-row">
+                    <button class="action-btn primary" onclick="applyAll()">APPLY CHANGES</button>
+                    <button class="action-btn" onclick="resetAll()">RESET TO BASELINE</button>
+                </div>
+                <p class="grp-note">Changes are saved in this browser.</p>
+                <div class="parse-log" id="assumpLog" style="display:none;"></div>
+            </div>
+        </div>
+            </div>
+        </div>
+        <!-- SECTION 1: BETA CALCULATION -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(0)">
+                <div class="section-title">1. BETA CALCULATION - COST OF EQUITY</div>
+                <div class="section-toggle">&#9654;</div>
+            </div>
+            <div class="section-content" id="section-0">
+                <div class="subsection">
+                    <h3>1.1 Business Segment Mix &amp; Unlevered Beta</h3>
+                    <p id="segIntro"></p>
+                    <table>
+                        <thead>
+                        <tr><th>Segment</th><th>% of Revenue</th><th>Unlevered Beta</th><th>Weighted Contribution</th></tr>
+                        </thead>
+                        <tbody id="segRows"></tbody>
+                    </table>
+                    <p class="source">Revenue by reportable segment from the 10-Q, Note 2 (H1 2026). <strong>Not auto-updated when a new filing is dropped in</strong> &mdash; re-read Note 2 and update here. Betas are building-materials judgement: aggregates and cement are cyclical but essential, road solutions track public infrastructure budgets, and the international mix carries a little more risk.</p>
+                    <div class="source-links">
+                        <span class="source-link"><a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000849395&type=10-&dateb=&owner=exclude&count=40" target="_blank">CRH SEC Filings</a></span>
+                        <span class="source-link"><a href="https://finance.yahoo.com/quote/CRH/" target="_blank">CRH on Yahoo Finance</a></span>
+                    </div>
+                </div>
+                <div class="subsection">
+                    <h3>1.2 Relevering Beta for CRH's Capital Structure</h3>
+                    <div class="calculation">
+                        CRH Capital Structure (<span id="asOfDate">June 30, 2026</span>):<br>
+                        Total Debt: $<span id="dbg_debt">16,593</span>M | Market Value of Equity: $<span id="mktCap">22,034</span>M | Tax Rate: <span id="dbg_tax">23</span>%<br>
+                        <span class="tag" id="dbg_src"></span><br>
+                        <br>
+                        Levered Beta = Unlevered Beta &times; [1 + (1 - Tax Rate) &times; D/E]<br>
+                        = <span id="lb_bu">0.769</span> &times; [1 + (1 - <span id="lb_tax">0.23</span>) &times; (<span id="lb_debt">16,593</span>/<span id="mktCapDE">22,034</span>)]<br>
+                        = <span id="lb_bu2">0.769</span> &times; [1 + <span id="lb_t1">0.77</span> &times; <span id="deRatio">0.753</span>]<br>
+                        = <span id="lb_bu3">0.769</span> &times; <span id="deBracket">1.580</span><br>
+                        = <strong><span id="leveredBeta">1.214</span></strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- SECTION 2: DIVIDEND DISCOUNT MODEL FOR Rm -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(1)">
+                <div class="section-title">2. DIVIDEND DISCOUNT MODEL - MARKET RISK PREMIUM</div>
+                <div class="section-toggle">&#9654;</div>
+            </div>
+            <div class="section-content" id="section-1">
+                <div class="subsection">
+                    <h3>2.1 S&amp;P 500 Dividend Discount Model</h3>
+                    <table>
+                        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+                        <tbody id="ddmRows"></tbody>
+                    </table>
+                </div>
+                <div class="subsection">
+                    <h3>2.2 DDM Formula - Solving for Rm</h3>
+                    <div id="ddmFormula" style="background: #fff; border: 3px solid #000; padding: 30px 20px; margin: 20px 0; font-size: 10px; text-align: center;"></div>
+                </div>
+                <div class="subsection">
+                    <h3>2.3 Market Risk Premium</h3>
+                    <div id="mrpBox" style="background: #fff; border: 2px solid #000; padding: 20px; margin: 15px 0; text-align: center; font-size: 13px;"></div>
+                </div>
+            </div>
+        </div>
+        <!-- SECTION 3: COUNTRY RISK ANALYSIS -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(2)">
+                <div class="section-title">3. COUNTRY RISK ASSESSMENT</div>
+                <div class="section-toggle">&#9654;</div>
+            </div>
+            <div class="section-content" id="section-2">
+                <div class="subsection">
+                    <h3>3.1 Geographic Exposure &amp; CDS Spreads</h3>
+                    <table>
+                        <thead>
+                        <tr><th>Region</th><th>% of Revenue</th><th>CDS Spread (bps)</th><th>Country Risk Premium</th></tr>
+                        </thead>
+                        <tbody id="regRows"></tbody>
+                    </table>
+                    <p class="source">Split from the same segment disclosure (10-Q Note 2): the two Americas segments against International Solutions. <strong>Not auto-updated when a filing is dropped in.</strong> CRH is Irish-domiciled but US-listed, US-managed and majority US-earning, so the Americas spread dominates.</p>
+                    <div class="source-links">
+                        <span class="source-link"><a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000849395&type=10-&dateb=&owner=exclude&count=40" target="_blank">CRH SEC Filings</a></span>
+                    </div>
+                </div>
+                <div class="subsection">
+                    <h3>3.2 Weighted Average Country Risk Premium</h3>
+                    <div class="reference-box" id="crpBox"></div>
+                </div>
+            </div>
+        </div>
+        <!-- SECTION 4: COST OF EQUITY -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(3)">
+                <div class="section-title">4. COST OF EQUITY CALCULATION</div>
+                <div class="section-toggle">&#9654;</div>
+            </div>
+            <div class="section-content" id="section-3">
+                <div class="subsection">
+                    <h3>4.1 Cost of Equity (CAPM)</h3>
+                    <div class="reference-box">
+                        <strong>Cost of Equity = Rf + &beta; &times; (Rm - Rf) + Country Risk Premium</strong><br>
+                        <br>
+                        Where:<br>
+                        &bull; Rf = <span id="ke_rf3">4.2</span>% (US 10-Year Treasury from Section 2)<br>
+                        &bull; &beta; = <span id="ke_beta">1.214</span> (Levered Beta from Section 1)<br>
+                        &bull; Rm - Rf = <span id="ke_mrp2">2.05</span>% (Market Risk Premium from Section 2)<br>
+                        &bull; Country Risk Premium = <span id="ke_crp">0.38</span>% (from Section 3)<br>
+                        <br>
+                        <strong>Calculation:</strong><br>
+                        Cost of Equity = <span id="ke_rf">4.2</span>% + (<span id="ke_beta2">1.214</span> &times; <span id="ke_mrp">2.05</span>%) + <span id="ke_crp2">0.38</span>%<br>
+                        = <span id="ke_rf2">4.2</span>% + <span id="ke_mid">2.489</span>% + <span id="ke_crp3">0.38</span>%<br>
+                        = <strong><span id="costEquity">7.069</span>%</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- SECTION 5: COST OF DEBT -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(4)">
+                <div class="section-title">5. COST OF DEBT CALCULATION</div>
+                <div class="section-toggle">&#9654;</div>
+            </div>
+            <div class="section-content" id="section-4">
+                <div class="subsection">
+                    <h3>5.1 Debt &amp; Cost of Debt Inputs</h3>
+                    <table>
+                        <thead><tr><th>Input</th><th>Value</th><th>Source</th></tr></thead>
+                        <tbody id="debtRows"></tbody>
+                    </table>
+                    <p class="source">Cost of debt is derived from the filing: interest expense for the period, annualised, over total debt. CRH carries real net debt, so this feeds the WACC meaningfully.</p>
+                    <div class="source-links">
+                        <span class="source-link"><a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000849395&type=10-&dateb=&owner=exclude&count=40" target="_blank">CRH SEC Filings</a></span>
+                    </div>
+                </div>
+                <div class="subsection">
+                    <h3>5.2 After-Tax Cost of Debt</h3>
+                    <div class="reference-box">
+                        <strong>After-Tax Cost of Debt = Pre-Tax Cost of Debt &times; (1 &minus; Tax Rate)</strong><br>
+                        <br>
+                        = <span id="kd_pre">4.72</span>% &times; (1 &minus; <span id="kd_tax">0.25</span>)<br>
+                        <br>
+                        = <strong><span id="kd_post">3.54</span>%</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- SECTION 6: WACC -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(5)">
+                <div class="section-title">6. WEIGHTED AVERAGE COST OF CAPITAL (WACC)</div>
+                <div class="section-toggle">&#9654;</div>
+            </div>
+            <div class="section-content" id="section-5">
+                <div class="subsection">
+                    <h3>6.1 Capital Structure</h3>
+                    <table>
+                        <tr><th>Component</th><th>Value ($M)</th><th>Weight</th></tr>
+                        <tr><td>Market Value of Equity</td><td><span id="cs_equity">22,034</span></td><td><span id="cs_we">57.04</span>%</td></tr>
+                        <tr><td>Market Value of Debt</td><td><span id="cs_debt">16,593</span></td><td><span id="cs_wd">42.96</span>%</td></tr>
+                        <tr style="font-weight: bold;"><td>Total Capital</td><td><span id="cs_total">38,627</span></td><td>100.00%</td></tr>
+                    </table>
+                </div>
+                <div class="subsection">
+                    <h3>6.2 WACC Calculation (Using Values from Previous Sections)</h3>
+                    <div class="reference-box">
+                        <strong>WACC = (E/V &times; Cost of Equity) + (D/V &times; Cost of Debt &times; (1 - Tax Rate))</strong><br>
+                        <br>
+                        Where:<br>
+                        &bull; E/V = <span id="w_we">57.04</span>% (from capital structure above)<br>
+                        &bull; D/V = <span id="w_wd">42.96</span>% (from capital structure above)<br>
+                        &bull; Cost of Equity = <span id="w_ke">7.069</span>% (from Section 4)<br>
+                        &bull; Cost of Debt = <span id="w_kd">4.77</span>% (from Section 5)<br>
+                        &bull; Tax Rate = <span id="w_tax">23</span>%<br>
+                        <br>
+                        <strong>Calculation:</strong><br>
+                        WACC = (<span id="w_we2">0.5704</span> &times; <span id="w_ke2">7.069</span>%) + (<span id="w_wd2">0.4296</span> &times; <span id="w_kd2">4.77</span>% &times; <span id="w_t1">0.77</span>)<br>
+                        = <span id="w_eq_part">4.032</span>% + <span id="w_dt_part">1.578</span>%<br>
+                        = <strong><span id="wacc">5.61</span>%</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- SECTION 7: FREE CASH FLOW ANALYSIS -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(6)">
+                <div class="section-title">7. FREE CASH FLOW ANALYSIS</div>
+                <div class="section-toggle">&#9654;</div>
+            </div>
+            <div class="section-content" id="section-6">
+                <div class="subsection">
+                    <h3 id="fcfHeading">7.1 Normalized Base Free Cash Flow (H1 2026 Annualized)</h3>
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Line Item</th>
+                            <th id="fcfPeriodCol">H1 2026 ($M)</th>
+                            <th>Annualized ($M)</th>
+                            <th>Source</th>
+                        </tr>
+                        </thead>
+                        <tbody id="fcfRows"></tbody>
+                    </table>
+                    <p class="source" id="fcfSource">Source: CRH plc Form 10-Q for the quarterly period ended June 30, 2026.</p>
+                    <div class="source-links">
+                        <span class="source-link"><a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000849395&type=10-&dateb=&owner=exclude&count=40" target="_blank">CRH SEC Filings</a></span>
+                    </div>
+                </div>
+                <div class="subsection">
+                    <h3>7.2 FCF Projection Assumptions (5-Year Forecast)</h3>
+                    <div class="calculation">
+                        Years 1-3:<br>
+                        - H1 2026 revenue $18,147M, up 7.0% on H1 2025's $16,962M<br>
+                        - Operating income $2,041M vs $1,953M, up 4.5% &mdash; growth is reaching the
+                          operating line, just more slowly than revenue<br>
+                        - US public infrastructure spending supports Road Solutions; bolt-on
+                          acquisitions continue (16 completed in H1 for $1,110M)<br>
+                        - <strong>Assumed FCF Growth Rate: <span id="g1a">6</span>% per year</strong>
+                          &mdash; between the revenue and earnings trends<br>
+                        <br>
+                        Years 4-5:<br>
+                        - Construction cycle assumed to normalise<br>
+                        - Capex broadly tracks D&amp;A, so growth needs proportionate reinvestment<br>
+                        - <strong>Assumed FCF Growth Rate: <span id="g2a">3</span>% per year</strong><br>
+                        <br>
+                        <strong>Terminal Growth Rate: <span id="ga">2.1</span>%</strong> (equals long-term GDP growth)<br>
+                        Rationale: Conservative terminal growth correlates with overall economy long-term growth.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- SECTION 8: 5-YEAR FCF PROJECTIONS -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(7)">
+                <div class="section-title">8. EXPLICIT FORECAST PERIOD (5 YEARS)</div>
+                <div class="section-toggle">&#9654;</div>
+            </div>
+            <div class="section-content" id="section-7">
+                <div class="subsection">
+                    <h3>8.1 Year-by-Year FCF Projections</h3>
+                    <table>
+                        <thead>
+                        <tr><th>Year</th><th>Growth Rate</th><th>FCF ($M)</th><th>Calculation</th></tr>
+                        </thead>
+                        <tbody id="projRows"></tbody>
+                    </table>
+                </div>
+                <div class="subsection">
+                    <h3>8.2 Terminal Value Calculation</h3>
+                    <div class="reference-box">
+                        <strong>Terminal Value = FCF(Year 5) &times; (1 + Terminal Growth Rate) / (WACC - Terminal Growth Rate)</strong><br>
+                        <br>
+                        Where:<br>
+                        &bull; FCF(Year 5) = $<span id="tv_fcf5">4,026</span>M<br>
+                        &bull; Terminal Growth Rate = <span id="tv_g">2.1</span>% (from Section 7)<br>
+                        &bull; WACC = <span id="tv_wacc">5.61</span>% (from Section 6)<br>
+                        <br>
+                        Terminal Value = <span id="tv_fcf5b">4,026</span> &times; <span id="tv_gm">1.021</span> / (<span id="tv_waccDec">0.0561</span> - <span id="tv_gDec">0.021</span>)<br>
+                        = <span id="tv_num">4,111</span> / <span id="tv_spread">0.0351</span><br>
+                        = <strong>$<span id="terminalValue">117,135</span>M</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- SECTION 9: DCF VALUATION -->
+        <div class="section">
+            <div class="section-header" onclick="toggleSection(8)">
+                <div class="section-title">9. DCF VALUATION MODEL</div>
+                <div class="section-toggle">&#9654;</div>
+            </div>
+            <div class="section-content" id="section-8">
+                <div class="subsection">
+                    <h3>9.1 Discounted Cash Flow to Enterprise Value</h3>
+                    <div id="dcfFormula" style="background:#fff;border:3px solid #000;padding:15px 10px;margin:15px 0;text-align:center;"></div>
+                    <table>
+                        <thead>
+                        <tr><th>Year</th><th>FCF ($M)</th><th>Discount Factor</th><th>PV ($M)</th></tr>
+                        </thead>
+                        <tbody id="pvRows"></tbody>
+                    </table>
+                </div>
+                <div class="subsection">
+                    <h3>9.2 Enterprise Value &amp; Equity Value</h3>
+                    <div class="calculation">
+                        Enterprise Value (from 9.1) = <strong>$<span id="enterpriseValue">104,610</span>M</strong><br>
+                        <br>
+                        Less: Net Debt (Debt - Cash)<br>
+                        Total Debt = <span id="nd_debt">16,593</span> | Cash = <span id="nd_cash">3,655</span> | Net Debt = <span id="nd_net">12,938</span><br>
+                        <span class="tag" id="nd_src"></span><br>
+                        <br>
+                        Equity Value = Enterprise Value - Net Debt<br>
+                        = <span id="eqv_ev">104,610</span> - <span id="eqv_nd">12,938</span><br>
+                        = <strong>$<span id="equityValue">91,672</span>M</strong>
+                    </div>
+                </div>
+                <div class="subsection">
+                    <h3>9.3 Intrinsic Value Per Share</h3>
+                    <div class="calculation">
+                        Shares Outstanding = <span id="sh_count">1,191</span> million <span style="font-size: 10px; color: #666;" id="sh_note">(fully diluted, 10-Q MD&amp;A "Share Count for Market Capitalization")</span><br>
+                        <br>
+                        Equity Value (from 9.2) &divide; Shares Outstanding<br>
+                        = <span id="iv_eq">91,672</span> &divide; <span id="iv_sh">1,191</span><br>
+                        = <strong>Intrinsic Value Per Share = $<span id="intrinsicValue">76.95</span></strong>
+                        <span id="priceSource" style="display:none;"></span>
+                        <span id="iv_up" style="display:none;"></span>
+                        <span id="currentPrice" style="display:none;"></span>
+                        <span id="currentPriceUpside" style="display:none;"></span>
+                        <span id="currentPriceUpsideDenom" style="display:none;"></span>
+                        <span id="upside" style="display:none;"></span>
+                    </div>
+                    <div class="source-links">
+                        <span class="source-link"><a href="https://finance.yahoo.com/quote/CRH/" target="_blank">Current CRH Price</a></span>
+                        <span class="source-link"><a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000849395&type=10-&dateb=&owner=exclude&count=40" target="_blank">CRH SEC Filings</a></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+/* ============================================================
+   SHARED QUOTE CACHE
+
+   Every page on this site needs the same quotes, and the Finnhub free tier
+   allows 60 calls a minute. Loaded independently that is index 33 +
+   performance 33 + holdings 27 + three DCF pages = 96 calls, so whichever
+   page you opened second used to receive HTTP 429 and quietly fall back to
+   its baked-in prices — which looked like "Finnhub works on some pages and
+   not others" with no visible cause.
+
+   All pages now read and write one cache in the browser. The first page to
+   load pays for the quotes; every other page reads them for free until they
+   expire. Entries are timestamped individually, so a page that only needs
+   one symbol never refreshes the other thirty-two.
+   ============================================================ */
+var QC_KEY = 'shourjo_quotes_v1';
+var QC_TTL = 120000;                       /* 2 minutes */
+
+function qcacheAll() {
+    try { return JSON.parse(localStorage.getItem(QC_KEY) || '{}') || {}; }
+    catch (e) { return {}; }               /* storage disabled — behave as a miss */
+}
+function qcacheGet(sym) {
+    var e = qcacheAll()[sym];
+    if (!e || !(e.c > 0)) return null;
+    if (Date.now() - e.at > QC_TTL) return null;
+    return {c: e.c, ms: e.ms};
+}
+function qcachePut(map) {
+    try {
+        var q = qcacheAll(), now = Date.now();
+        for (var k in map) if (map[k] && map[k].c > 0)
+            q[k] = {c: map[k].c, ms: map[k].ms || now, at: now};
+        localStorage.setItem(QC_KEY, JSON.stringify(q));
+    } catch (e) { /* storage full or disabled — the page still works, just uncached */ }
+}
+function qcacheAge() {
+    var q = qcacheAll(), newest = 0;
+    for (var k in q) if (q[k] && q[k].at > newest) newest = q[k].at;
+    return newest ? Math.round((Date.now() - newest) / 1000) : null;
+}
+
+</script>
+<script>
+        const FINNHUB_API_KEY = 'da11ropr01qo0t0kpao0da11ropr01qo0t0kpaog';
+        const TICKER = 'CRH';
+        const FALLBACK_PRICE  = 98.86;
+        const STORE_KEY       = 'crh_dcf_model_v1';
+        /* ============================================================
+           BASELINE MODEL - CRH plc Form 10-Q, quarterly period ended
+           June 30, 2026. CRH reports in USD, so no conversion is needed.
+           All monetary values in $ millions.
+           ============================================================ */
+        /* DEFAULTS-START */
+        const DEFAULTS = {
+            company:   'CRH public limited company',
+            formType:  '10-Q',
+            periodEnd: '2026-06-30',
+            periodLabel: 'H1 2026',
+            asOfLabel: 'June 30, 2026',
+            factor:    2,
+            ebit:         2041,
+            iprd:            0,
+            legal:           0,
+            impairRestr:     0,
+            impairIntang:   48,
+            da:           1124,
+            capex:        1240,
+            dNWC:            0,
+            cash:         3025,
+            shortDebt:    2516,
+            longDebt:    15410,
+            shares:        670,
+            tax:   0.25,
+            kd:    4.72,
+            rf:    4.2,
+            mrpOverride: 5.0,
+            g:     2.1,
+            g1:    6,
+            g2:    3,
+            spx:     5847,
+            spxDiv:  237.50,
+            segments: [
+                {n:'Americas Materials Solutions', pct:42.3, beta:0.95},
+                {n:'Americas Building Solutions',  pct:20.9, beta:1.05},
+                {n:'International Solutions',      pct:36.8, beta:1.10}
+            ],
+            otherBeta: 1.05,
+            regions: [
+                {n:'Americas (US & Canada)', pct:63.2, cds:0.20},
+                {n:'International',          pct:36.8, cds:0.35}
+            ],
+            otherCds: 0.35,
+            provenance: 'CRH plc Form 10-Q for the quarterly period ended June 30, 2026',
+            srcFile: 'crh-20260630.htm',
+            srcTags: {
+                periodLabel:  '2026-01-01 to 2026-06-30',
+                factor:       '181-day period, annualised x2',
+                ebit:         'us-gaap:OperatingIncomeLoss',
+                iprd:         'not reported in this filing - set to 0',
+                legal:        'not reported in this filing - set to 0',
+                impairRestr:  'not reported in this filing - set to 0',
+                impairIntang: 'us-gaap:AssetImpairmentCharges (goodwill impairment on the construction accessories divestiture)',
+                da:           'us-gaap:DepreciationDepletionAndAmortization',
+                capex:        'us-gaap:PaymentsToAcquireProductiveAssets',
+                cash:         'us-gaap:CashAndCashEquivalentsAtCarryingValue',
+                shortDebt:    'us-gaap:DebtCurrent',
+                longDebt:     'us-gaap:LongTermDebtNoncurrent',
+                shares:       'us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding (diluted, this period)'
+            }
+        };
+        /* DEFAULTS-END */
+        let MODEL = loadModel();
+        function loadModel() {
+            try {
+                const s = localStorage.getItem(STORE_KEY);
+                if (s) {
+                    const saved = JSON.parse(s);
+                    return Object.assign({}, DEFAULTS, saved);
+                }
+            } catch (e) { /* storage unavailable - fall through */ }
+            return Object.assign({}, DEFAULTS);
+        }
+        function saveModel() {
+            try { localStorage.setItem(STORE_KEY, JSON.stringify(MODEL)); return true; }
+            catch (e) { return false; }
+        }
+        function isCustom() {
+            return MODEL.periodEnd !== DEFAULTS.periodEnd || MODEL.ebit !== DEFAULTS.ebit
+                || MODEL.cash !== DEFAULTS.cash || MODEL.shares !== DEFAULTS.shares;
+        }
+        /* ---------- derived quantities that do not depend on price ---------- */
+        function derived() {
+            const m = MODEL;
+            /* Named rows carry explicit percentages. Whatever is left over to reach 100%
+               becomes a single auto "Other" row at a generic beta / CDS spread. */
+            const segNamed = m.segments.reduce((s, x) => s + x.pct, 0);
+            const regNamed = m.regions.reduce((s, x) => s + x.pct, 0);
+            const segOther = Math.max(0, 100 - segNamed);
+            const regOther = Math.max(0, 100 - regNamed);
+            const segRows  = m.segments.concat(segOther > 0.005
+                ? [{n:'Other (residual)', pct:segOther, beta:m.otherBeta, auto:true}] : []);
+            const regRows  = m.regions.concat(regOther > 0.005
+                ? [{n:'Other (residual)', pct:regOther, cds:m.otherCds, auto:true}] : []);
+            const segTot = segRows.reduce((s, x) => s + x.pct, 0);
+            const regTot = regRows.reduce((s, x) => s + x.pct, 0);
+            const betaU  = segTot ? segRows.reduce((s, x) => s + (x.pct/segTot) * x.beta, 0) : 0;
+            const crp    = regTot ? regRows.reduce((s, x) => s + (x.pct/regTot) * x.cds, 0) : 0;
+            /* DDM with constant growth collapses exactly to Gordon: Rm = D0(1+g)/P0 + g */
+            const gd  = m.g / 100;
+            const div = [];
+            for (let t = 1; t <= 5; t++) div.push(m.spxDiv * Math.pow(1 + gd, t));
+            const rm  = m.spx > 0 ? (m.spxDiv * (1 + gd) / m.spx + gd) * 100 : 0;
+            const mrpDDM = rm - m.rf;
+            /* At current index levels the DDM implies an equity risk premium far below the
+               long-run US average, which flatters every valuation it touches. mrpOverride
+               supplies a conventional premium; set it to 0 to fall back to the DDM. */
+            const mrp = m.mrpOverride > 0 ? m.mrpOverride : mrpDDM;
+            const debt    = m.shortDebt + m.longDebt;
+            const netDebt = debt - m.cash;
+            const normEbitP = m.ebit + m.iprd + m.legal + m.impairRestr + m.impairIntang;
+            const normEbitA = normEbitP * m.factor;
+            const nopat     = normEbitA * (1 - m.tax);
+            const daA       = m.da * m.factor;
+            const capexA    = m.capex * m.factor;
+            const dNWCA     = m.dNWC * m.factor;
+            const fcf0      = nopat + daA - capexA - dNWCA;
+            const fcf = [];
+            fcf[0] = fcf0 * (1 + m.g1 / 100);
+            fcf[1] = fcf[0] * (1 + m.g1 / 100);
+            fcf[2] = fcf[1] * (1 + m.g1 / 100);
+            fcf[3] = fcf[2] * (1 + m.g2 / 100);
+            fcf[4] = fcf[3] * (1 + m.g2 / 100);
+            return {debt, netDebt, normEbitP, normEbitA, nopat, daA, capexA, dNWCA, fcf0, fcf,
+                    betaU, crp, segTot, regTot, segRows, regRows, segOther, regOther,
+                    segNamed, regNamed, rm, mrpDDM, mrp, div};
+        }
+        const fmt = (n, d) => n.toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        function toggleSection(index) {
+            const content = document.getElementById('section-' + index);
+            const header  = event.target.closest('.section-header');
+            const toggle  = header.querySelector('.section-toggle');
+            content.classList.toggle('active');
+            toggle.textContent = content.classList.contains('active') ? '▼' : '▶';
+        }
+        /* ---- shared bits for the big visual formulas (Sections 2.2 and 9.1) ---- */
+        const EQ_ROW = 'white-space:nowrap;display:flex;justify-content:center;align-items:center;'
+                     + 'overflow-x:auto;padding-bottom:4px;';
+        const EQ_RESULT = 'margin-top:12px;padding-top:10px;border-top:2px solid #ccc;'
+                        + 'font-size:20px;font-weight:bold;';
+        const OP = '<span style="font-size:18px;margin:0 3px;">+</span>';
+        /* a stacked numerator-over-denominator fraction */
+        const frac = (num, den, fs) => {
+            const n = fs || 15;
+            return '<span style="display:inline-block;margin:0 4px;text-align:center;vertical-align:middle;">'
+                 + '<div style="font-weight:bold;font-size:' + n + 'px;margin-bottom:2px;">' + num + '</div>'
+                 + '<div style="border-top:2px solid #000;padding-top:2px;font-size:' + (n - 2) + 'px;">' + den + '</div></span>';
+        };
+        /* ================= FULL MODEL RENDER ================= */
+        /* Guard: if rebuild throws part-way through, the page is left showing whatever
+           static values were in the HTML - which look like a real valuation. Fail loudly
+           instead. */
+        function rebuild(price) {
+            try { rebuildInner(price); }
+            catch (err) {
+                console.error('rebuild failed:', err);
+                const b = document.getElementById('modelBanner');
+                if (b) {
+                    b.classList.add('active');
+                    b.style.background = '#c00'; b.style.color = '#fff';
+                    b.textContent = 'MODEL FAILED TO RENDER: ' + err.message
+                        + ' — the figures on this page are NOT a valid valuation. Check the browser console.';
+                }
+                ['hdrIntrinsic','hdrUpside'].forEach(i => { const e = document.getElementById(i); if (e) e.textContent = '—'; });
+                throw err;
+            }
+        }
+        function rebuildInner(price) {
+            LAST_PRICE = price;
+            const m = MODEL, D = derived();
+            const P = m.periodLabel;
+            const T = m.srcTags || {};
+            /* ---- banner ---- */
+            const banner = document.getElementById('modelBanner');
+            if (isCustom()) {
+                banner.classList.add('active');
+                banner.textContent = 'MODEL UPDATED FROM FILING: ' + m.company + ' ' + m.formType
+                    + ' - period ended ' + m.periodEnd + '. Section 1 segment mix and Section 3 geographic weights are NOT auto-updated - set those by hand from the filing.';
+            } else {
+                banner.classList.remove('active');
+            }
+            /* ---- Section 1.2 : relever beta ---- */
+            const E  = m.shares * price;
+            const DE = D.debt / E;
+            const bracket = 1 + (1 - m.tax) * DE;
+            const betaL   = D.betaU * bracket;
+            set('asOfDate',  m.asOfLabel);
+            const fileTag = m.srcFile ? m.srcFile + ' · ' : '';
+            document.getElementById('dbg_src').innerHTML =
+                fileTag + (T.shortDebt || '') + ' + ' + (T.longDebt || '')
+                + ' | shares ' + fmt(m.shares,0) + 'M: ' + (T.shares || '') + ' | equity = shares &times; live Finnhub price';
+            document.getElementById('nd_src').innerHTML =
+                fileTag + (T.shortDebt || '') + ' + ' + (T.longDebt || '') + ' &minus; ' + (T.cash || '')
+                + ' &mdash; balance sheet at ' + m.asOfLabel;
+            set('dbg_debt',  fmt(D.debt, 0));
+            set('dbg_tax',   (m.tax * 100).toFixed(0));
+            set('mktCap',    fmt(E, 0));
+            set('mktCapDE',  fmt(E, 0));
+            set('lb_bu',  D.betaU.toFixed(3));
+            set('lb_bu2', D.betaU.toFixed(3));
+            set('lb_bu3', D.betaU.toFixed(3));
+            set('lb_tax', m.tax.toFixed(2));
+            set('lb_t1',  (1 - m.tax).toFixed(2));
+            set('lb_debt', fmt(D.debt, 0));
+            set('deRatio',   DE.toFixed(3));
+            set('deBracket', bracket.toFixed(3));
+            set('leveredBeta', betaL.toFixed(3));
+            /* ---- Section 1.1 : segment mix -> unlevered beta ---- */
+            set('segIntro', 'Revenue mix by product line. Any percentage short of 100% falls into a residual "Other" row at the generic beta.');
+            const autoTag = r => r.auto ? ' <span class="tag">(auto)</span>' : '';
+            document.getElementById('segRows').innerHTML =
+                D.segRows.map(s => {
+                    const w = s.pct / D.segTot;
+                    return '<tr><td>' + s.n + autoTag(s) + '</td><td>' + s.pct.toFixed(2) + '%</td><td>'
+                         + s.beta.toFixed(2) + '</td><td>' + w.toFixed(4) + ' &times; ' + s.beta.toFixed(2)
+                         + ' = ' + (w * s.beta).toFixed(3) + '</td></tr>';
+                }).join('')
+                + '<tr style="font-weight:bold;"><td>TOTAL UNLEVERED BETA</td><td>' + D.segTot.toFixed(2)
+                + '%</td><td></td><td>' + D.segRows.map(s => (s.pct/D.segTot*s.beta).toFixed(3)).join(' + ')
+                + ' = <strong>' + D.betaU.toFixed(3) + '</strong></td></tr>';
+            /* ---- Section 2 : DDM -> Rm -> market risk premium ---- */
+            document.getElementById('ddmRows').innerHTML =
+                  '<tr><td>S&amp;P 500 Index Level (P&#8320;)</td><td>' + fmt(m.spx, 0) + '</td></tr>'
+                + '<tr><td>Annual Dividend per Share (D&#8320;)</td><td>$' + m.spxDiv.toFixed(2) + '</td></tr>'
+                + '<tr><td>Long-Term GDP Growth (g)</td><td>' + m.g + '%</td></tr>';
+            let ddm = '<div style="' + EQ_ROW + '">'
+                    + '<span style="font-weight:bold;font-size:22px;">' + fmt(m.spx, 0) + '</span>'
+                    + '<span style="font-size:20px;margin:0 6px;">=</span>';
+            for (let t = 0; t < 5; t++)
+                ddm += (t ? OP : '') + frac(D.div[t].toFixed(2), '(1+R<sub>m</sub>)<sup>' + (t+1) + '</sup>');
+            ddm += OP + frac(D.div[4].toFixed(2) + '(' + (1 + m.g/100).toFixed(3) + ')',
+                             '(R<sub>m</sub>&minus;' + (m.g/100).toFixed(3) + ')(1+R<sub>m</sub>)<sup>5</sup>', 13);
+            ddm += '</div><div style="' + EQ_RESULT + '">R<sub>m</sub> = ' + D.rm.toFixed(2) + '%</div>';
+            document.getElementById('ddmFormula').innerHTML = ddm;
+            document.getElementById('mrpBox').innerHTML =
+                '<strong>DDM output: R<sub>m</sub> &minus; R<sub>f</sub> = ' + D.rm.toFixed(2)
+                + '% &minus; ' + m.rf + '% = ' + D.mrpDDM.toFixed(2) + '%</strong>'
+              + (m.mrpOverride > 0
+                  ? '<div style="margin-top:12px;padding-top:10px;border-top:2px solid #000;">'
+                    + '<strong>Premium used: ' + D.mrp.toFixed(2) + '%</strong>'
+                    + '<div class="tag" style="margin-top:6px;text-align:left;">The DDM implies a '
+                    + D.mrpDDM.toFixed(2) + '% equity risk premium at current index levels, well below the long-run US '
+                    + 'average of roughly 4.5&ndash;6%. A premium that low makes everything look cheap, so the model uses '
+                    + D.mrp.toFixed(2) + '% instead. Set the override to 0 under EDIT MODEL to use the DDM figure.</div></div>'
+                  : '<div class="tag" style="margin-top:8px;">Using the DDM output. R<sub>m</sub> is fixed here, so raising '
+                    + 'R<sub>f</sub> lowers the cost of equity whenever &beta; &gt; 1.</div>');
+            /* ---- Section 3 : geographic mix -> country risk premium ---- */
+            document.getElementById('regRows').innerHTML =
+                D.regRows.map(x => '<tr><td>' + x.n + autoTag(x) + '</td><td>' + x.pct.toFixed(2)
+                    + '%</td><td>' + Math.round(x.cds * 100) + '</td><td>' + x.cds.toFixed(2) + '%</td></tr>').join('')
+                + '<tr style="font-weight:bold;"><td>TOTAL</td><td>' + D.regTot.toFixed(2) + '%</td><td></td><td></td></tr>';
+            document.getElementById('crpBox').innerHTML =
+                '<strong>Country Risk Premium = '
+                + D.regRows.map(x => '(' + (x.pct/D.regTot).toFixed(4) + ' &times; ' + x.cds.toFixed(2) + '%)').join(' + ')
+                + '</strong><br>= ' + D.regRows.map(x => (x.pct/D.regTot*x.cds).toFixed(3) + '%').join(' + ')
+                + '<br><br><strong>= ' + D.crp.toFixed(2) + '%</strong>';
+            /* ---- Section 4 : cost of equity ---- */
+            const kePart = betaL * D.mrp;
+            const ke = m.rf + kePart + D.crp;
+            set('ke_beta',  betaL.toFixed(3));
+            set('ke_beta2', betaL.toFixed(3));
+            set('ke_mid',   kePart.toFixed(3));
+            set('costEquity', ke.toFixed(3));
+            ['ke_crp','ke_crp2','ke_crp3'].forEach(i => set(i, D.crp.toFixed(2)));
+            ['ke_rf','ke_rf2','ke_rf3'].forEach(i => set(i, m.rf));
+            ['ke_mrp','ke_mrp2'].forEach(i => set(i, D.mrp.toFixed(2)));
+            /* ---- Section 5 : cost of debt ---- */
+            document.getElementById('debtRows').innerHTML =
+                  '<tr><td>Short-term debt</td><td>$' + fmt(m.shortDebt,0) + 'M</td><td class="tag">' + (T.shortDebt||'') + '</td></tr>'
+                + '<tr><td>Long-term debt</td><td>$'  + fmt(m.longDebt,0)  + 'M</td><td class="tag">' + (T.longDebt||'')  + '</td></tr>'
+                + '<tr style="font-weight:bold;"><td>Total debt</td><td>$' + fmt(D.debt,0) + 'M</td><td class="tag">short-term + long-term</td></tr>'
+                + '<tr><td>Cash &amp; equivalents</td><td>$' + fmt(m.cash,0) + 'M</td><td class="tag">' + (T.cash||'') + '</td></tr>'
+                + '<tr style="font-weight:bold;"><td>Net debt</td><td>$' + fmt(D.netDebt,0) + 'M</td><td class="tag">debt less cash</td></tr>'
+                + '<tr><td>Pre-tax cost of debt</td><td>' + m.kd.toFixed(2) + '%</td><td class="tag">interest expense annualised / total debt</td></tr>'
+                + '<tr><td>Tax rate</td><td>' + (m.tax*100).toFixed(0) + '%</td><td class="tag">assumption &mdash; see EDIT MODEL</td></tr>';
+            set('kd_pre',  m.kd.toFixed(2));
+            set('kd_tax',  m.tax.toFixed(2));
+            set('kd_post', (m.kd * (1 - m.tax)).toFixed(2));
+            /* ---- Section 6 : WACC ---- */
+            const V = E + D.debt, we = E / V, wd = D.debt / V;
+            const eqPart = we * ke, dtPart = wd * m.kd * (1 - m.tax);
+            const wacc = eqPart + dtPart;
+            set('cs_equity', fmt(E, 0));
+            set('cs_debt',   fmt(D.debt, 0));
+            set('cs_total',  fmt(V, 0));
+            set('cs_we', (we * 100).toFixed(2));
+            set('cs_wd', (wd * 100).toFixed(2));
+            set('w_we',  (we * 100).toFixed(2));
+            set('w_wd',  (wd * 100).toFixed(2));
+            set('w_we2', we.toFixed(4));
+            set('w_wd2', wd.toFixed(4));
+            set('w_ke',  ke.toFixed(3));
+            set('w_ke2', ke.toFixed(3));
+            set('w_kd',  m.kd.toFixed(2));
+            set('w_kd2', m.kd.toFixed(2));
+            set('w_tax', (m.tax * 100).toFixed(0));
+            set('w_t1',  (1 - m.tax).toFixed(2));
+            set('w_eq_part', eqPart.toFixed(3));
+            set('w_dt_part', dtPart.toFixed(3));
+            set('wacc', wacc.toFixed(2));
+            /* ---- Section 7.1 : normalized FCF build ---- */
+            set('fcfHeading',  '7.1 Normalized Base Free Cash Flow (' + P + ' Annualized)');
+            set('fcfPeriodCol', P + ' ($M)');
+            set('fcfSource', 'Source: ' + m.provenance + '. Annualisation factor ×' + m.factor + '.');
+            const row = (l, p, a, s, bold) =>
+                '<tr' + (bold ? ' style="font-weight: bold;"' : '') + '><td>' + l + '</td><td>'
+                + p + '</td><td>' + a + '</td><td>' + s + '</td></tr>';
+            const neg = v => '(' + fmt(Math.abs(v), 0) + ')';
+            const src = k => '<span class="tag">' + (m.srcFile ? m.srcFile + ' &middot; ' : '') + (T[k] || '') + '</span>';
+            document.getElementById('fcfRows').innerHTML =
+                  row('Operating income, as reported', fmt(m.ebit,0), fmt(m.ebit*m.factor,0), src('ebit'))
+                + row('Add: Acquired IPR&amp;D (one-time)', fmt(m.iprd,0), fmt(m.iprd*m.factor,0), src('iprd'))
+                + row('Add: Legal settlements &amp; loss contingencies', fmt(m.legal,0), fmt(m.legal*m.factor,0), src('legal'))
+                + row('Add: Other asset impairments, restructuring', fmt(m.impairRestr,0), fmt(m.impairRestr*m.factor,0), src('impairRestr'))
+                + row('Add: Intangible asset impairments', fmt(m.impairIntang,0), fmt(m.impairIntang*m.factor,0), src('impairIntang'))
+                + row('NORMALIZED EBIT', fmt(D.normEbitP,0), fmt(D.normEbitA,0), '<span class="tag">sum of the above</span>', true)
+                + row('Less: Taxes @ ' + (m.tax*100).toFixed(0) + '%', neg(D.normEbitP*m.tax), neg(D.normEbitA*m.tax), '<span class="tag">statutory rate &mdash; assumption, not from the filing</span>')
+                + row('NOPAT', fmt(D.normEbitP*(1-m.tax),0), fmt(D.nopat,0), '<span class="tag">' + fmt(D.normEbitA,0) + ' &times; ' + (1-m.tax).toFixed(2) + '</span>', true)
+                + row('Plus: Depreciation &amp; Amortization', fmt(m.da,0), fmt(D.daA,0), src('da'))
+                + row('Less: Capital Expenditures', neg(m.capex), neg(D.capexA), src('capex'))
+                + row('Less: Change in Net Working Capital', m.dNWC === 0 ? '0' : neg(m.dNWC), m.dNWC === 0 ? '0' : neg(D.dNWCA), '<span class="tag">assumption, not from the filing</span>')
+                + row('BASE FREE CASH FLOW (Year 0)', fmt(D.fcf0/m.factor,0), fmt(D.fcf0,0), '<span class="tag">NOPAT + D&amp;A &minus; capex &minus; &Delta;NWC</span>', true);
+            /* ---- Section 7.2 growth labels ---- */
+            set('g1a', m.g1); set('g2a', m.g2); set('ga', m.g);
+            /* ---- Section 8.1 : projections ---- */
+            let proj = '<tr><td>Year 0 (Current)</td><td>-</td><td>' + fmt(D.fcf0,0)
+                     + '</td><td>' + P + ' annualized, normalized</td></tr>';
+            let prev = D.fcf0;
+            for (let i = 0; i < 5; i++) {
+                const gr = i < 3 ? m.g1 : m.g2;
+                proj += '<tr><td>Year ' + (i+1) + '</td><td>' + gr.toFixed(1) + '%</td><td>'
+                      + fmt(D.fcf[i],0) + '</td><td>' + fmt(prev,0) + ' × ' + (1+gr/100).toFixed(2) + '</td></tr>';
+                prev = D.fcf[i];
+            }
+            document.getElementById('projRows').innerHTML = proj;
+            /* ---- Section 8.2 : terminal value ---- */
+            const r = wacc/100, g = m.g/100;
+            const tv = D.fcf[4] * (1+g) / (r-g);
+            set('tv_fcf5',  fmt(D.fcf[4],0));
+            set('tv_fcf5b', fmt(D.fcf[4],0));
+            set('tv_g',     m.g);
+            set('tv_gm',    (1+g).toFixed(3));
+            set('tv_gDec',  g.toFixed(3));
+            set('tv_wacc',  wacc.toFixed(2));
+            set('tv_waccDec', r.toFixed(4));
+            set('tv_num',   fmt(D.fcf[4]*(1+g),0));
+            set('tv_spread',(r-g).toFixed(4));
+            set('terminalValue', fmt(tv,0));
+            /* ---- Section 9.1 : big visual DCF, mirrors the DDM in 2.2 ---- */
+            let pvSum = 0, pvHtml = '';
+            let dcf = '<div style="' + EQ_ROW + '">'
+                    + '<span style="font-weight:bold;font-size:20px;">EV</span>'
+                    + '<span style="font-size:20px;margin:0 6px;">=</span>';
+            for (let i = 0; i < 5; i++) {
+                const df = 1 / Math.pow(1 + r, i + 1);
+                const pv = D.fcf[i] * df;
+                pvSum += pv;
+                dcf += (i ? OP : '') + frac(fmt(D.fcf[i], 0), '(1+' + wacc.toFixed(2) + '%)<sup>' + (i+1) + '</sup>');
+                pvHtml += '<tr><td>Year ' + (i+1) + '</td><td>' + fmt(D.fcf[i], 0) + '</td><td>'
+                        + df.toFixed(4) + '</td><td>' + fmt(pv, 0) + '</td></tr>';
+            }
+            const df5  = 1 / Math.pow(1 + r, 5);
+            const pvTv = tv * df5;
+            dcf += OP + frac(fmt(tv, 0), '(1+' + wacc.toFixed(2) + '%)<sup>5</sup>', 13);
+            dcf += '</div><div style="font-size:10px;color:#666;margin-top:4px;">'
+                 + 'five forecast years, then the terminal value</div>';
+            const ev = pvSum + pvTv;
+            dcf += '<div style="' + EQ_RESULT + '">EV = $' + fmt(ev, 0) + 'M</div>';
+            document.getElementById('dcfFormula').innerHTML = dcf;
+            pvHtml += '<tr><td>Terminal Value</td><td>' + fmt(tv, 0) + '</td><td>' + df5.toFixed(4)
+                    + '</td><td>' + fmt(pvTv, 0) + '</td></tr>'
+                    + '<tr style="font-weight:bold;"><td>ENTERPRISE VALUE</td><td></td><td></td><td>'
+                    + fmt(ev, 0) + '</td></tr>';
+            document.getElementById('pvRows').innerHTML = pvHtml;
+            const eqVal = ev - D.netDebt;
+            const ips   = eqVal / m.shares;
+            const up    = (ips - price) / price * 100;
+            set('enterpriseValue', fmt(ev,0));
+            set('nd_debt', fmt(D.debt,0));
+            set('nd_cash', fmt(m.cash,0));
+            set('nd_net',  fmt(D.netDebt,0));
+            set('eqv_ev', fmt(ev,0));
+            set('eqv_nd', fmt(D.netDebt,0));
+            set('equityValue', fmt(eqVal,0));
+            set('sh_count', fmt(m.shares,0));
+            set('iv_eq', fmt(eqVal,0));
+            set('iv_sh', fmt(m.shares,0));
+            set('intrinsicValue', ips.toFixed(2));
+            set('iv_up', ips.toFixed(2));
+            set('currentPrice', price.toFixed(2));
+            set('currentPriceUpside', price.toFixed(2));
+            set('currentPriceUpsideDenom', price.toFixed(2));
+            set('upside', (up > 0 ? '+' : '') + up.toFixed(0) + '%');
+            /* ---- headline numbers in the title box ---- */
+            set('hdrIntrinsic', '$' + ips.toFixed(2));
+            set('hdrPrice',     '$' + price.toFixed(2));
+            set('hdrUpside',    (up > 0 ? '+' : '') + up.toFixed(0) + '%');
+            /* ---- DCF baseline source box ---- */
+            const srcRow = (l, v) => '<tr><td>' + l + '</td><td>' + v + '</td></tr>';
+            document.getElementById('baselineSrcRows').innerHTML =
+                  srcRow('Company',           m.company || '&mdash;')
+                + srcRow('Filing',            (m.formType || '&mdash;') + ', period ended ' + (m.periodEnd || '&mdash;'))
+                + srcRow('Source document',   m.srcFile ? '<strong>' + m.srcFile + '</strong>' : 'not recorded')
+                + srcRow('Reporting period',  P + ' &mdash; annualised &times;' + m.factor)
+                + srcRow('Read via',          'inline XBRL tags &mdash; each figure carries its own tag in the tables below')
+                + srcRow('Status',            isCustom()
+                        ? '<span class="badge changed">EDITED</span> one or more inputs differ from the figures this file shipped with'
+                        : '<span class="badge found">BASELINE</span> matches the figures this file shipped with');
+        }
+        /* ================= INLINE XBRL PARSER ================= */
+        /* dei:DocumentPeriodEndDate is rendered for humans, not as ISO. Handle the
+           common renderings; return '' if it is not a date we recognise. */
+        const MONTHS = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,
+                        september:9,october:10,november:11,december:12,jan:1,feb:2,mar:3,apr:4,
+                        jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
+        function toISO(s) {
+            if (!s) return '';
+            s = String(s).replace(/\s+/g, ' ').trim();
+            let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+            if (m) return s;
+            const p2 = n => String(n).padStart(2, '0');
+            m = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.exec(s);          // 06/30/2026
+            if (m) return m[3] + '-' + p2(m[1]) + '-' + p2(m[2]);
+            m = /^([A-Za-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})$/.exec(s);          // June 30, 2026
+            if (m && MONTHS[m[1].toLowerCase()]) return m[3] + '-' + p2(MONTHS[m[1].toLowerCase()]) + '-' + p2(m[2]);
+            m = /^(\d{1,2})\s+([A-Za-z]+)\.?,?\s+(\d{4})$/.exec(s);          // 30 June 2026
+            if (m && MONTHS[m[2].toLowerCase()]) return m[3] + '-' + p2(MONTHS[m[2].toLowerCase()]) + '-' + p2(m[1]);
+            return '';
+        }
+        function parseFiling(text) {
+            const contexts = {};
+            const ctxRe = /<(?:xbrli:)?context id="([^"]+)"[^>]*>([\s\S]*?)<\/(?:xbrli:)?context>/gi;
+            let m;
+            while ((m = ctxRe.exec(text)) !== null) {
+                const body = m[2];
+                if (/explicitMember|typedMember/i.test(body)) continue;   // dimensional - skip
+                const sd = /<(?:xbrli:)?startDate>\s*([\d-]+)/i.exec(body);
+                const ed = /<(?:xbrli:)?endDate>\s*([\d-]+)/i.exec(body);
+                const it = /<(?:xbrli:)?instant>\s*([\d-]+)/i.exec(body);
+                if (it) contexts[m[1]] = {type: 'instant', date: it[1]};
+                else if (sd && ed) contexts[m[1]] = {
+                    type: 'duration', start: sd[1], end: ed[1],
+                    days: Math.round((new Date(ed[1]) - new Date(sd[1])) / 86400000) + 1
+                };
+            }
+            /* Unit declarations tell us what a fact measures. A unit whose ONLY measure is
+               xbrli:shares is a share count; one that also measures a currency (USD-per-share)
+               is a per-share price and must not be mistaken for one. This is structural -
+               it does not depend on guessing concept names. */
+            const shareUnits = {}, unitCur = {};
+            const uRe = /<(?:xbrli:)?unit id="([^"]+)"[^>]*>([\s\S]*?)<\/(?:xbrli:)?unit>/gi;
+            let um;
+            while ((um = uRe.exec(text)) !== null) {
+                const meas = (um[2].match(/<(?:xbrli:)?measure>\s*([^<]+?)\s*<\/(?:xbrli:)?measure>/gi) || [])
+                    .map(s => s.replace(/<[^>]*>/g, '').trim().toLowerCase());
+                if (meas.length === 1 && /(^|:)shares$/.test(meas[0])) shareUnits[um[1]] = true;
+                /* a unit whose single measure is an ISO currency marks a monetary fact */
+                if (meas.length === 1) {
+                    const cm = /^iso4217:([a-z]{3})$/.exec(meas[0]);
+                    if (cm) unitCur[um[1]] = cm[1];
+                }
+            }
+            const facts = [];
+            const fRe = /<ix:nonFraction([^>]*)>([\s\S]*?)<\/ix:nonFraction>/gi;
+            while ((m = fRe.exec(text)) !== null) {
+                const attrs = m[1];
+                const nm = /name="([^"]+)"/i.exec(attrs);
+                const cr = /contextRef="([^"]+)"/i.exec(attrs);
+                if (!nm || !cr || !contexts[cr[1]]) continue;
+                const sc = /scale="(-?\d+)"/i.exec(attrs);
+                let raw = m[2].replace(/<[^>]*>/g, '').replace(/[,\s ]|&nbsp;/g, '');
+                if (!/^-?\d*\.?\d+$/.test(raw)) continue;
+                let v = parseFloat(raw) * Math.pow(10, sc ? parseInt(sc[1], 10) : 0);
+                if (/sign="-"/i.test(attrs)) v = -v;
+                const ur = /unitRef="([^"]+)"/i.exec(attrs);
+                facts.push({name: nm[1], cref: cr[1], ctx: contexts[cr[1]], value: v,
+                            unit: ur ? ur[1] : '', isShares: !!(ur && shareUnits[ur[1]]),
+                            currency: ur ? (unitCur[ur[1]] || '') : ''});
+            }
+            const cik  = (/<xbrli:identifier[^>]*>\s*(\d+)\s*<\/xbrli:identifier>/i.exec(text) || [])[1] || '';
+            const nnRe = n => {
+                const r = new RegExp('<ix:nonNumeric[^>]*name="' + n + '"[^>]*>([\\s\\S]*?)<\\/ix:nonNumeric>', 'i');
+                const x = r.exec(text);
+                return x ? x[1].replace(/<[^>]*>/g, '').trim() : '';
+            };
+            /* Work out which period the document actually reports on.
+               Never just take the latest date in the file: filings routinely carry
+               subsequent-event contexts dated after period end, and commitment tables
+               with contexts running years into the future. Either would hijack the
+               whole extraction. */
+            const periodEndText = nnRe('dei:DocumentPeriodEndDate');
+            const durEnds = {};
+            facts.forEach(f => {
+                if (f.ctx.type === 'duration') durEnds[f.ctx.end] = (durEnds[f.ctx.end] || 0) + 1;
+            });
+            const hasDuration = d => Object.prototype.hasOwnProperty.call(durEnds, d);
+            /* 1. the document's own stated period end, if it parses and matches a real context */
+            let periodEnd = toISO(periodEndText);
+            if (!periodEnd || !hasDuration(periodEnd)) {
+                /* 2. otherwise: a statement period carries hundreds of facts while stray
+                      contexts carry a handful, so first keep only the well-populated ends,
+                      then take the LATEST of those. Counting alone is not enough - in any
+                      Q2/Q3 filing the current period and its prior-year comparative have
+                      nearly identical fact counts, and the comparative can edge ahead. */
+                let maxN = 0;
+                Object.keys(durEnds).forEach(d => { if (durEnds[d] > maxN) maxN = durEnds[d]; });
+                let best = '';
+                Object.keys(durEnds).forEach(d => {
+                    if (durEnds[d] >= maxN * 0.5 && d > best) best = d;
+                });
+                periodEnd = best;
+            }
+            /* 3. last resort - the latest instant we can see */
+            if (!periodEnd) {
+                Object.values(contexts).forEach(c => {
+                    const d = c.type === 'duration' ? c.end : c.date;
+                    if (d && d > periodEnd) periodEnd = d;
+                });
+            }
+            return {
+                facts, contexts, cik, periodEnd, periodEndText, shareUnits,
+                statedEnd: toISO(periodEndText),
+                company:  nnRe('dei:EntityRegistrantName'),
+                formType: nnRe('dei:DocumentType')
+            };
+        }
+        /* tag preference lists - first match wins */
+        const TAGMAP = {
+            ebit:        ['us-gaap:OperatingIncomeLoss'],
+            iprd:        ['teva:ResearchAndDevelopmentExpenseAndLiabilities',
+                          'us-gaap:ResearchAndDevelopmentInProcess',
+                          'us-gaap:ResearchAndDevelopmentAssetAcquiredOtherThanThroughBusinessCombinationExpense',
+                          'us-gaap:BusinessCombinationAcquiredInProcessResearchAndDevelopment'],
+            legal:       ['teva:LegalSettlementsAndLossContingencies',
+                          'us-gaap:LitigationSettlementExpense',
+                          'us-gaap:LossContingencyAccrualProvision'],
+            impairRestr: ['teva:ImpairmentsRestructuringAndOthers',
+                          'us-gaap:RestructuringSettlementAndImpairmentProvisions',
+                          'us-gaap:RestructuringCharges'],
+            impairIntang:['teva:IntangibleAssetImpairments',
+                          'us-gaap:ImpairmentOfIntangibleAssetsExcludingGoodwill',
+                          'us-gaap:ImpairmentOfIntangibleAssetsFinitelived',
+                          'us-gaap:AssetImpairmentCharges'],
+            da:          ['us-gaap:DepreciationDepletionAndAmortization',
+                          'us-gaap:DepreciationAndAmortization',
+                          'us-gaap:DepreciationAmortizationAndAccretionNet'],
+            capex:       ['us-gaap:PaymentsToAcquireProductiveAssets',
+                          'us-gaap:PaymentsToAcquirePropertyPlantAndEquipment',
+                          'us-gaap:PaymentsToAcquirePropertyPlantAndEquipmentAndIntangibleAssets'],
+            cash:        ['us-gaap:CashAndCashEquivalentsAtCarryingValue',
+                          'us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents'],
+            shortDebt:   ['us-gaap:DebtCurrent', 'us-gaap:ShortTermBorrowings',
+                          'us-gaap:LongTermDebtCurrent', 'us-gaap:OtherShortTermBorrowings'],
+            longDebt:    ['us-gaap:LongTermNotesAndLoans', 'us-gaap:LongTermDebtNoncurrent',
+                          'us-gaap:SeniorNotesNoncurrent', 'us-gaap:LongTermDebt'],
+            /* diluted weighted-average is period-scoped and is the standard per-share
+               denominator, so it leads; the cover-page count and issued-less-treasury
+               are point-in-time fallbacks */
+            sharesDiluted:     ['us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding'],
+            sharesOutstanding: ['dei:EntityCommonStockSharesOutstanding', 'us-gaap:CommonStockSharesOutstanding'],
+            sharesIssued:      ['us-gaap:CommonStockSharesIssued'],
+            sharesTreasury:    ['us-gaap:TreasuryStockCommonShares']
+        };
+        /* --- group 1 : comes from the filing --- */
+        /* adj:true marks a one-time add-back. If the filing does not report the charge,
+           the charge did not happen that period, so the right value is 0 - carrying the
+           previous period's figure forward would invent an add-back out of nothing. */
+        const FILING_FIELDS = [
+            {k:'ebit',         l:'Operating income (EBIT)',                kind:'duration', signed:true, src:'Income statement'},
+            {k:'iprd',         l:'Acquired IPR&D &mdash; add-back',        kind:'duration', adj:true, src:'One-time charge, added back'},
+            {k:'legal',        l:'Legal settlements &mdash; add-back',     kind:'duration', adj:true, src:'Added back as non-recurring'},
+            {k:'impairRestr',  l:'Impairments / restructuring &mdash; add-back', kind:'duration', adj:true, src:'Added back as non-recurring'},
+            {k:'impairIntang', l:'Intangible impairments &mdash; add-back',kind:'duration', adj:true, src:'Added back as non-recurring'},
+            {k:'da',           l:'Depreciation &amp; amortization',        kind:'duration', src:'Cash flow statement'},
+            {k:'capex',        l:'Capital expenditures',                   kind:'duration', src:'Cash flow statement'},
+            {k:'cash',         l:'Cash &amp; equivalents',                 kind:'instant',  src:'Balance sheet'},
+            {k:'shortDebt',    l:'Short-term debt',                        kind:'instant',  src:'Balance sheet'},
+            {k:'longDebt',     l:'Long-term debt',                         kind:'instant',  src:'Balance sheet'},
+            {k:'shares',       l:'Shares outstanding (millions)',          kind:'shares',
+             src:'Diluted weighted-average for the period, from the EPS denominator'}
+        ];
+        /* --- group 2 : never from the filing --- */
+        const ASSUMPS = [
+            {k:'rf',        l:'Risk-free rate (%)',              u:'Sections 2, 4, 5', n:'US 10Y Treasury'},
+            {k:'spx',       l:'S&P 500 index level',             u:'Section 2',        n:'Base for the DDM'},
+            {k:'spxDiv',    l:'S&P 500 annual dividend ($)',     u:'Section 2',        n:'Base for the DDM'},
+            {k:'g',         l:'Long-run GDP growth (%)',         u:'Sections 2, 8',    n:'Drives the DDM and terminal value; must stay below WACC'},
+            {k:'tax',       l:'Tax rate (decimal)',              u:'Sections 1, 6, 7', n:'Statutory rate &mdash; enter 0.23, not 23'},
+            {k:'kd',        l:'Pre-tax cost of debt (%)',        u:'Section 6',        n:'Interest expense / total debt, from the filing'},
+            {k:'mrpOverride', l:'Equity risk premium override (%)', u:'Sections 2, 4',
+             n:'Used instead of the DDM output. 0 = fall back to the DDM.'},
+            {k:'otherBeta', l:'Generic beta for Other segment',  u:'Section 1',        n:'Applied to the residual % below'},
+            {k:'otherCds',  l:'Generic CDS for Other region (%)',u:'Section 3',        n:'Applied to the residual % below'},
+            {k:'g1',        l:'FCF growth, years 1-3 (%)',       u:'Sections 7, 8',    n:'Judgement'},
+            {k:'g2',        l:'FCF growth, years 4-5 (%)',       u:'Sections 7, 8',    n:'Judgement'},
+            {k:'dNWC',      l:'Change in net working capital',   u:'Section 7',        n:'Per period, in $M'}
+        ];
+        let PARSED = null, DURATIONS = [], PENDING = null, LAST_FILE = '', LAST_PRICE = FALLBACK_PRICE, PENDING_NOTE = false;
+        function pickFact(parsed, tags, kind, ctxFilter) {
+            for (const t of tags) {
+                const hits = parsed.facts.filter(f => f.name === t && f.ctx.type === kind && ctxFilter(f.ctx));
+                if (hits.length) return {value: hits[0].value, tag: t};
+            }
+            return null;
+        }
+        /* Find the share count by SEARCHING the filing rather than asserting tag names.
+           Step 1 is structural: every fact whose unit measures only xbrli:shares is a
+           share count, which already rules out per-share prices and EPS. Step 2 discards
+           concepts that are share counts but not the company's share base - authorised,
+           antidilutive, incremental, option and award tallies. Step 3 ranks what is left
+           by how well it serves as a per-share divisor. Nothing here depends on a single
+           tag existing. */
+        const SHARE_REJECT = /authoriz|antidilut|incremental|granted|vested|forfeit|exercis|award|option|reserved|repurchas|issuable|convertible|restricted|performance|employee|treasury|subscri|escrow|warrant/i;
+        const SHARE_RANK = [
+            {re: /weightedaverage.*dilut.*outstanding|dilut.*weightedaverage.*outstanding/i, score: 100, why: 'diluted weighted-average for the period (the EPS denominator)'},
+            /* any other diluted count still beats a basic one for a per-share divisor,
+               even if the concept is named in a way we have never seen */
+            {re: /dilut.*outstanding|dilut.*shares/i,                                       score:  95, why: 'diluted share count'},
+            {re: /entitycommonstocksharesoutstanding/i,                                     score:  90, why: 'cover-page shares outstanding at the period end'},
+            {re: /commonstocksharesoutstanding/i,                                           score:  85, why: 'common shares outstanding'},
+            {re: /weightedaverage.*basic.*outstanding|basic.*weightedaverage.*outstanding/i,score:  70, why: 'basic weighted-average for the period'},
+            {re: /weightedaverage.*outstanding/i,                                           score:  65, why: 'weighted-average shares outstanding'},
+            {re: /sharesoutstanding/i,                                                      score:  60, why: 'shares outstanding'},
+            {re: /commonstocksharesissued|sharesissued/i,                                   score:  40, why: 'shares issued (before treasury)'}
+        ];
+        function findShareCandidates(p, c, latest) {
+            const inScope = f => f.ctx.type === 'duration'
+                ? (f.ctx.start === c.start && f.ctx.end === c.end)
+                : (f.ctx.date === latest);
+            const raw = p.facts.filter(f => f.isShares && f.value > 0 && inScope(f)
+                                         && f.cref.indexOf('Member') === -1);
+            /* keep one entry per concept */
+            const byName = {};
+            raw.forEach(f => { if (!byName[f.name]) byName[f.name] = f; });
+            const local = n => n.split(':').pop();
+            const out = [];
+            Object.values(byName).forEach(f => {
+                const ln = local(f.name);
+                if (SHARE_REJECT.test(ln)) return;
+                const hit = SHARE_RANK.find(r => r.re.test(ln));
+                if (!hit) return;
+                out.push({name: f.name, value: Math.round(f.value / 1e6), score: hit.score, why: hit.why});
+            });
+            /* a real share base is the same order of magnitude as the largest one found;
+               anything far smaller is a sub-tally that slipped through the name filter */
+            const max = out.reduce((m, x) => Math.max(m, x.value), 0);
+            const kept = out.filter(x => x.value >= max * 0.2);
+            kept.sort((a, b) => b.score - a.score || b.value - a.value);
+            /* issued less treasury, if the filing gives both and nothing better exists */
+            const find = re => raw.find(f => re.test(local(f.name)));
+            const iss = find(/commonstocksharesissued|sharesissued/i);
+            const tre = find(/treasurystock.*shares|shares.*treasury/i);
+            if (iss && tre) {
+                const v = Math.round((iss.value - tre.value) / 1e6);
+                if (v > 0) kept.push({name: 'issued less treasury', value: v, score: 50,
+                                      why: 'shares issued minus treasury shares'});
+            }
+            kept.sort((a, b) => b.score - a.score || b.value - a.value);
+            return kept;
+        }
+        function resolveShares(p, c, latest) {
+            const cands = findShareCandidates(p, c, latest);
+            if (!cands.length) return null;
+            const best = cands[0];
+            const others = cands.slice(1).map(x => x.name.split(':').pop() + ' ' + fmt(x.value, 0) + 'M');
+            return {
+                value: best.value,
+                candidates: cands,
+                note: best.name.split(':').pop() + ' &mdash; ' + best.why
+                    + (others.length ? '  |  also found: ' + others.join(', ') : '')
+            };
+        }
+        const esc = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+        const numOf = id => { const e = document.getElementById(id); if (!e) return 0;
+                              const v = parseFloat(String(e.value).replace(/,/g,'')); return isNaN(v) ? 0 : v; };
+        const strOf = id => { const e = document.getElementById(id); return e ? e.value.trim() : ''; };
+        /* Value the model without touching the DOM - used to show what a change did. */
+        function valueOf(model, price) {
+            const keep = MODEL;
+            MODEL = model;
+            const D = derived();
+            MODEL = keep;
+            const E = model.shares * price;
+            const betaL = D.betaU * (1 + (1 - model.tax) * D.debt / E);
+            const ke = model.rf + betaL * D.mrp + D.crp;
+            const V = E + D.debt;
+            const wacc = (E/V) * ke + (D.debt/V) * model.kd * (1 - model.tax);
+            const r = wacc/100, g = model.g/100;
+            if (r <= g) return {betaU:D.betaU, crp:D.crp, wacc:wacc, fcf0:D.fcf0, ips:NaN};
+            const tv = D.fcf[4] * (1+g) / (r-g);
+            let pv = 0;
+            for (let i = 0; i < 5; i++) pv += D.fcf[i] / Math.pow(1+r, i+1);
+            const ev = pv + tv / Math.pow(1+r, 5);
+            return {betaU:D.betaU, crp:D.crp, rm:D.rm, mrpDDM:D.mrpDDM, mrp:D.mrp, wacc:wacc,
+                    fcf0:D.fcf0, ev:ev, ips:(ev - D.netDebt) / model.shares};
+        }
+        /* trim binary-float noise for display: 5.220000000000001 -> 5.22 */
+        const tidy = v => {
+            const n = parseFloat(v);
+            return (!isNaN(n) && String(v).trim() !== '') ? String(Math.round(n * 1e6) / 1e6) : String(v);
+        };
+        /* Plain-language list of what actually changed between two models. */
+        function diffModel(a, b) {
+            const out = [];
+            const label = {};
+            ASSUMPS.forEach(x => label[x.k] = x.l);
+            FILING_FIELDS.forEach(x => label[x.k] = x.l.replace(/&amp;/g, '&').replace(/&mdash;/g, '-').replace(/&[a-z]+;/g, ''));
+            label.periodLabel = 'Reporting period';
+            label.factor = 'Annualisation factor';
+            Object.keys(label).forEach(k => {
+                if (!same(a[k], b[k])) out.push({n: label[k], from: tidy(a[k]), to: tidy(b[k])});
+            });
+            ['segments','regions'].forEach(key => {
+                const A = a[key] || [], B = b[key] || [];
+                const f = key === 'segments' ? 'beta' : 'cds';
+                const unit = key === 'segments' ? '' : '%';
+                for (let i = 0; i < Math.max(A.length, B.length); i++) {
+                    if (!A[i]) { out.push({n: key.slice(0,-1) + ' added', from: '—', to: B[i].n + ' ' + tidy(B[i].pct) + '%'}); continue; }
+                    if (!B[i]) { out.push({n: key.slice(0,-1) + ' removed', from: A[i].n, to: '—'}); continue; }
+                    if (A[i].n !== B[i].n)          out.push({n: key.slice(0,-1) + ' name', from: A[i].n, to: B[i].n});
+                    if (!same(A[i].pct, B[i].pct))  out.push({n: B[i].n + ' share', from: tidy(A[i].pct) + '%', to: tidy(B[i].pct) + '%'});
+                    if (!same(A[i][f], B[i][f]))    out.push({n: B[i].n + (key === 'segments' ? ' beta' : ' CDS'),
+                                                              from: tidy(A[i][f]) + unit, to: tidy(B[i][f]) + unit});
+                }
+            });
+            return out;
+        }
+        function renderSummary(changes, before, after) {
+            if (!changes.length) return 'No changes to apply - every field already matches the loaded model.';
+            const p = LAST_PRICE;
+            const v0 = valueOf(before, p), v1 = valueOf(after, p);
+            const mv = (l, a, b, d, suf) => {
+                const A = (a || 0).toFixed(d), B = (b || 0).toFixed(d);
+                return A === B ? null : '    ' + l.padEnd(22) + A + (suf||'') + '  ->  ' + B + (suf||'');
+            };
+            const lines = ['APPLIED ' + changes.length + ' change' + (changes.length > 1 ? 's' : '') + ':'];
+            changes.forEach(c => lines.push('    ' + String(c.n).padEnd(30) + String(c.from) + '  ->  ' + String(c.to)));
+            const eff = [
+                mv('Unlevered beta',  v0.betaU, v1.betaU, 3),
+                mv('Market return Rm', v0.rm,   v1.rm,   2, '%'),
+                mv('Market risk prem', v0.mrp,  v1.mrp,  2, '%'),
+                mv('Country risk prem',v0.crp,  v1.crp,  2, '%'),
+                mv('WACC',            v0.wacc,  v1.wacc, 2, '%'),
+                mv('Base FCF ($M)',   v0.fcf0,  v1.fcf0, 0),
+                mv('Enterprise value', v0.ev,   v1.ev,   0),
+                mv('Value per share', v0.ips,   v1.ips,  2)
+            ].filter(Boolean);
+            lines.push('', eff.length ? 'EFFECT ON THE MODEL:' : 'EFFECT ON THE MODEL: none - these inputs do not feed the valuation.');
+            eff.forEach(l => lines.push(l));
+            return lines.join('\n');
+        }
+        /* ================= EDITOR ================= */
+        function togglePanel() {
+            const b = document.getElementById('filingBody');
+            b.classList.toggle('active');
+            set('filingToggle', b.classList.contains('active') ? '▼' : '▶');
+            if (b.classList.contains('active')) renderEditor();
+        }
+        function renderEditor() {
+            /* group 1 - filing fields, pre-filled from the model, or from a pending parse */
+            document.getElementById('filingRows').innerHTML =
+                [{k:'periodLabel', l:'Reporting period', text:true, src:'Label shown on the tables'},
+                 {k:'factor',      l:'Annualisation factor', src:'x2 for a half-year, x4 for a quarter, x1 for a full year'}]
+                .concat(FILING_FIELDS).map(f => {
+                    const pend = PENDING && Object.prototype.hasOwnProperty.call(PENDING.vals, f.k)
+                               ? PENDING.vals[f.k] : null;
+                    const cur  = MODEL[f.k];
+                    const show = pend !== null ? pend : cur;
+                    const status = statusBadge(f.k, show);
+                    const cls = same(show, DEFAULTS[f.k]) ? '' : ' class="changed-row"';
+                    const file = PENDING ? (PENDING.file || '') : (MODEL.srcFile || '');
+                    const t = PENDING ? (PENDING.tags[f.k] || '')
+                                      : ((MODEL.srcTags && MODEL.srcTags[f.k]) || f.src || '');
+                    const tag = (file ? '<strong>' + esc(file) + '</strong> &middot; ' : '') + t;
+                    return '<tr' + cls + '><td>' + f.l + '</td>'
+                         + '<td><input id="f_' + f.k + '" value="' + esc(show) + '"'
+                         + (f.text ? ' style="width:170px;text-align:left"' : '') + '></td>'
+                         + '<td>' + status + '</td><td class="tag">' + tag + '</td></tr>';
+                }).join('');
+            /* group 2 - assumptions */
+            document.getElementById('assumpRows').innerHTML = ASSUMPS.map(a =>
+                '<tr' + (same(MODEL[a.k], DEFAULTS[a.k]) ? '' : ' class="changed-row"') + '>'
+              + '<td>' + a.l + '</td><td><input id="as_' + a.k + '" value="' + MODEL[a.k] + '"></td>'
+              + '<td>' + statusBadge(a.k, MODEL[a.k]) + '</td>'
+              + '<td>' + a.u + '</td><td class="tag">' + a.n + '</td></tr>').join('');
+            const D = derived();
+            const del = (fn, i) => '<td><button class="action-btn" style="font-size:10px;padding:2px 7px" onclick="'
+                                 + fn + '(' + i + ')">&times;</button></td>';
+            const rowCls = (arr, key, i, f) => {
+                const d = DEFAULTS[key][i];
+                return (d && d.n === arr[i].n && same(arr[i][f], d[f]) && same(arr[i].pct, d.pct)) ? '' : ' class="changed-row"';
+            };
+            document.getElementById('segEditRows').innerHTML = MODEL.segments.map((s,i) =>
+                '<tr' + rowCls(MODEL.segments,'segments',i,'beta') + '><td><input id="sg_n_' + i + '" value="' + esc(s.n) + '" style="width:180px;text-align:left"></td>'
+              + '<td><input id="sg_p_' + i + '" value="' + s.pct + '"></td>'
+              + '<td><input id="sg_b_' + i + '" value="' + s.beta + '"></td>' + del('delSeg', i) + '</tr>').join('')
+              + otherRow(D.segOther, MODEL.otherBeta, D.segNamed);
+            document.getElementById('regEditRows').innerHTML = MODEL.regions.map((x,i) =>
+                '<tr' + rowCls(MODEL.regions,'regions',i,'cds') + '><td><input id="rg_n_' + i + '" value="' + esc(x.n) + '" style="width:180px;text-align:left"></td>'
+              + '<td><input id="rg_p_' + i + '" value="' + x.pct + '"></td>'
+              + '<td><input id="rg_c_' + i + '" value="' + x.cds + '"></td>' + del('delReg', i) + '</tr>').join('')
+              + otherRow(D.regOther, MODEL.otherCds, D.regNamed);
+            /* derived block - outputs, shown but not editable */
+            document.getElementById('derivedRows').innerHTML = [
+                ['Market return R<sub>m</sub>',   D.rm.toFixed(2) + '%',    'S&P index, dividend and GDP growth'],
+                ['Market risk premium',           D.mrp.toFixed(2) + '%',   'R<sub>m</sub> &minus; risk-free rate'],
+                ['Unlevered beta',                D.betaU.toFixed(3),       'Segment mix above'],
+                ['Country risk premium',          D.crp.toFixed(2) + '%',   'Geographic mix above'],
+                ['Normalized EBIT (annualised)',  '$' + fmt(D.normEbitA,0) + 'M', 'EBIT plus the add-backs, &times; factor'],
+                ['Base free cash flow',           '$' + fmt(D.fcf0,0) + 'M','NOPAT + D&amp;A &minus; capex &minus; &Delta;NWC'],
+                ['Total debt',                    '$' + fmt(D.debt,0) + 'M','Short-term + long-term debt'],
+                ['Net debt',                      '$' + fmt(D.netDebt,0) + 'M', 'Total debt &minus; cash']
+            ].map(r => '<tr><td>' + r[0] + '</td><td><strong>' + r[1] + '</strong></td><td class="tag">' + r[2] + '</td></tr>').join('');
+        }
+        /* a value is BASELINE while it still matches the figures this file shipped with */
+        const same = (a, b) => {
+            const na = parseFloat(a), nb = parseFloat(b);
+            if (!isNaN(na) && !isNaN(nb)) return Math.abs(na - nb) < 1e-9;
+            return String(a) === String(b);
+        };
+        const statusBadge = (k, v) => same(v, DEFAULTS[k])
+            ? '<span class="badge found">BASELINE</span>'
+            : '<span class="badge changed">UPDATED</span>';
+        /* the residual row is computed, never typed into */
+        function otherRow(otherPct, generic, named) {
+            if (otherPct > 0.005)
+                return '<tr style="background:#f0f0f0;"><td><em>Other (residual, auto)</em></td>'
+                     + '<td><strong>' + otherPct.toFixed(2) + '</strong></td>'
+                     + '<td>' + generic + '</td><td class="tag">to 100%</td></tr>';
+            if (named > 100.005)
+                return '<tr style="background:#fdd;"><td colspan="4" style="color:#c00;font-weight:bold;">'
+                     + 'Percentages total ' + named.toFixed(2) + '% &mdash; over 100%. Reduce them.</td></tr>';
+            return '<tr style="background:#f0f0f0;"><td colspan="4" class="tag">Totals 100% &mdash; no residual row.</td></tr>';
+        }
+        function harvestEditor() {
+            if (!document.getElementById('f_ebit')) return;
+            MODEL.periodLabel = strOf('f_periodLabel') || MODEL.periodLabel;
+            MODEL.factor = numOf('f_factor') || 1;
+            FILING_FIELDS.forEach(f => { MODEL[f.k] = numOf('f_' + f.k); });
+            ASSUMPS.forEach(a => { MODEL[a.k] = numOf('as_' + a.k); });
+            const r6 = v => Math.round(v * 1e6) / 1e6;
+            MODEL.segments = MODEL.segments.map((s,i) => ({
+                n: strOf('sg_n_'+i) || s.n, pct: r6(numOf('sg_p_'+i)), beta: r6(numOf('sg_b_'+i))}));
+            MODEL.regions = MODEL.regions.map((x,i) => ({
+                n: strOf('rg_n_'+i) || x.n, pct: r6(numOf('rg_p_'+i)), cds: r6(numOf('rg_c_'+i))}));
+        }
+        function addSeg() { harvestEditor(); MODEL.segments.push({n:'New segment',pct:0,beta:MODEL.otherBeta}); renderEditor(); }
+        function addReg() { harvestEditor(); MODEL.regions.push({n:'New region',pct:0,cds:MODEL.otherCds}); renderEditor(); }
+        function delSeg(i){ harvestEditor(); if (MODEL.segments.length>1) MODEL.segments.splice(i,1); renderEditor(); }
+        function delReg(i){ harvestEditor(); if (MODEL.regions.length >1) MODEL.regions.splice(i,1);  renderEditor(); }
+        function applyAll() {
+            const before = JSON.parse(JSON.stringify(MODEL));
+            harvestEditor();
+            const log = document.getElementById('assumpLog');
+            log.style.display = 'block';
+            const D = derived();
+            const bad = [];
+            if (MODEL.shares <= 0)               bad.push('Share count must be greater than zero.');
+            if (MODEL.tax < 0 || MODEL.tax >= 1) bad.push('Tax rate must be a decimal between 0 and 1 (0.23, not 23).');
+            if (MODEL.factor <= 0)               bad.push('Annualisation factor must be greater than zero.');
+            if (D.segNamed > 100.005) bad.push('Segment percentages total ' + D.segNamed.toFixed(2) + '% - cannot exceed 100%.');
+            if (D.regNamed > 100.005) bad.push('Region percentages total '  + D.regNamed.toFixed(2) + '% - cannot exceed 100%.');
+            if (D.segTot <= 0)        bad.push('Segment percentages total zero - unlevered beta cannot be weighted.');
+            if (D.regTot <= 0)        bad.push('Region percentages total zero - country risk cannot be weighted.');
+            if (MODEL.spx <= 0)       bad.push('S&P 500 index level must be greater than zero.');
+            if (bad.length) {
+                MODEL = before;          /* roll back so a rejected edit cannot leak in */
+                renderEditor();
+                log.textContent = 'Not applied:\n  ' + bad.join('\n  ');
+                return;
+            }
+            if (PENDING) {
+                MODEL.company    = PENDING.company    || MODEL.company;
+                MODEL.formType   = PENDING.formType   || MODEL.formType;
+                MODEL.periodEnd  = PENDING.periodEnd  || MODEL.periodEnd;
+                MODEL.asOfLabel  = PENDING.asOfLabel  || MODEL.asOfLabel;
+                MODEL.provenance = PENDING.provenance || MODEL.provenance;
+                MODEL.srcFile    = PENDING.file || MODEL.srcFile;
+                MODEL.srcTags    = Object.assign({}, MODEL.srcTags, PENDING.tags);
+                PENDING = null;
+                document.getElementById('periodWrap').style.display = 'none';
+            }
+            const changes = diffModel(before, MODEL);
+            const summary = renderSummary(changes, before, MODEL);
+            const stored = saveModel();
+            renderEditor();
+            log.textContent = summary + '\n\n'
+                + (stored ? 'Saved in this browser.' : 'Browser storage unavailable - lasts until reload.');
+            fetchCurrentPrice();
+        }
+        function resetAll() {
+            MODEL = JSON.parse(JSON.stringify(DEFAULTS));
+            PENDING = null;
+            try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+            document.getElementById('periodWrap').style.display = 'none';
+            document.getElementById('reviewWarn').innerHTML = '';
+            const log = document.getElementById('assumpLog');
+            log.style.display = 'block';
+            log.textContent = "Reset to this file's built-in baseline: " + DEFAULTS.provenance + '.';
+            renderEditor();
+            fetchCurrentPrice();
+        }
+        /* ================= FILE HANDLING ================= */
+        function handleFile(file) {
+            const log = document.getElementById('parseLog');
+            log.style.display = 'block';
+            log.textContent = 'Reading ' + file.name + ' (' + (file.size/1048576).toFixed(1) + ' MB)...';
+            const rd = new FileReader();
+            LAST_FILE = file.name;
+            rd.onload = e => { try { runExtraction(e.target.result, file.name); }
+                               catch (err) { log.textContent = 'Parse failed: ' + err.message; console.error(err); } };
+            rd.onerror = () => { log.textContent = 'Could not read the file.'; };
+            rd.readAsText(file);
+        }
+        function runExtraction(text, fname) {
+            const log = document.getElementById('parseLog');
+            const p = parseFiling(text);
+            PARSED = p;
+            if (!p.facts.length) {
+                log.textContent = 'No inline XBRL facts found in ' + fname + '.\n\n'
+                    + 'The file must be a .htm filing from https://www.sec.gov/search-filings\n\n'
+                    + 'Search the company there, open the 10-K or 10-Q, and download the large primary .htm '
+                    + 'that contains the financial statements - not FilingSummary.xml, not an R*.htm exhibit, '
+                    + 'not the plain-text wrapper, and not a PDF or a page saved from a browser. '
+                    + 'Filings before roughly 2019 predate inline XBRL and carry no machine-readable tags.';
+                document.getElementById('periodWrap').style.display = 'none';
+                return;
+            }
+            const collect = end => {
+                const seen = {}, out = [];
+                Object.values(p.contexts).forEach(c => {
+                    if (c.type !== 'duration') return;
+                    if (end && c.end !== end) return;
+                    const k = c.start + '|' + c.end;
+                    if (!seen[k]) { seen[k] = 1; out.push(c); }
+                });
+                return out.sort((a,b) => b.days - a.days);
+            };
+            DURATIONS = collect(p.periodEnd);
+            let widened = false;
+            if (!DURATIONS.length) {
+                /* nothing ends on the date we picked - offer every window rather than nothing */
+                DURATIONS = collect(null).filter(c => c.days >= 60 && c.days <= 400);
+                widened = DURATIONS.length > 0;
+            }
+            if (!DURATIONS.length) {
+                log.textContent = 'Parsed ' + fname + ' (' + p.facts.length + ' tagged values) but found no '
+                    + 'reporting period to read.\n\nThis usually means the file is an exhibit or a partial '
+                    + 'document rather than the primary filing. From https://www.sec.gov/search-filings, '
+                    + 'download the large .htm that contains the financial statements and try again.';
+                document.getElementById('periodWrap').style.display = 'none';
+                return;
+            }
+            const older = MODEL.periodEnd && p.periodEnd < MODEL.periodEnd;
+            log.textContent = 'Parsed ' + fname + '\n'
+                + '  Company    : ' + (p.company || 'not tagged') + '\n'
+                + '  CIK        : ' + (p.cik || 'not found') + '\n'
+                + '  Form       : ' + (p.formType || 'not tagged') + '\n'
+                + '  Period end : ' + p.periodEnd
+                    + (p.statedEnd && p.statedEnd !== p.periodEnd ? '  (document states ' + p.periodEndText + ')' : '')
+                    + (older ? '  — OLDER than the loaded model (' + MODEL.periodEnd + ')' : '') + '\n'
+                + '  XBRL facts : ' + p.facts.length + ' tagged values\n'
+                + (widened ? '  Note       : no window ended exactly on that date, so every 2-13 month period is offered\n' : '')
+                + '\nValues below are filled in but NOT applied. Review, then press APPLY CHANGES.';
+            PENDING_NOTE = true;
+            const sel = document.getElementById('periodSelect');
+            sel.innerHTML = DURATIONS.map((c,i) => {
+                const mo = Math.round(c.days/30);
+                const tag = i === 0 ? (DURATIONS.length > 1 ? ' — year to date (recommended)' : ' — full period')
+                                    : ' — this quarter only';
+                return '<option value="' + i + '">' + mo + ' months' + tag + '  (' + c.start + ' to ' + c.end + ')</option>';
+            }).join('');
+            sel.value = '0';
+            document.getElementById('periodWrap').style.display = 'block';
+            /* Currency guard: the model is built in USD and priced off a USD quote, so a
+               filing reported in another currency would silently produce nonsense. */
+            let warn = '';
+            const cur = {};
+            p.facts.forEach(f => { if (f.currency) cur[f.currency] = (cur[f.currency]||0) + 1; });
+            const curList = Object.keys(cur).sort((x,y) => cur[y]-cur[x]);
+            const mainCur = curList.length ? curList[0] : '';
+            if (mainCur && mainCur !== 'usd') {
+                warn += '<div class="warn">FILING REPORTS IN ' + mainCur.toUpperCase() + ', NOT USD.<br>'
+                     + 'Every figure below would be in ' + mainCur.toUpperCase() + ' while the share price is in USD, so '
+                     + 'the per-share result would be meaningless. This model has no currency conversion &mdash; do not '
+                     + 'apply this filing.</div>';
+            }
+            const isCRH = p.cik && parseInt(p.cik,10) === 849395;
+            if (!isCRH) {
+                warn += '<div class="warn">FILING IS NOT CRH (' + (p.company || 'unknown') + ', CIK ' + (p.cik || '?') + ').<br>'
+                     + 'The FROM THE FILING block will still extract correctly, but every assumption below - segment betas, '
+                     + 'geographic mix, cost of debt, growth rates - is set for CRH and must be edited by hand.</div>';
+            }
+            document.getElementById('reviewWarn').innerHTML = warn;
+            if (!document.getElementById('filingBody').classList.contains('active')) togglePanel();
+            onPeriodChange();
+        }
+        function snapFactor(days) {
+            if (days >= 350 && days <= 380) return 1;
+            if (days >= 265 && days <= 285) return 4/3;
+            if (days >= 175 && days <= 195) return 2;
+            if (days >=  85 && days <=  98) return 4;
+            return Math.round(365/days * 1000) / 1000;
+        }
+        function periodLabel(c) {
+            const mo  = Math.round(c.days / 30);
+            const yr  = c.end.slice(0, 4);
+            const mon = parseInt(c.end.slice(5, 7), 10);
+            if (mo >= 11) return 'FY ' + yr;
+            if (mo >= 8)  return '9M ' + yr;
+            if (mo >= 5)  return mon === 6  ? 'H1 ' + yr
+                               : mon === 12 ? 'H2 ' + yr : '6M to ' + c.end;
+            if (mo >= 2)  return (mon % 3 === 0) ? 'Q' + (mon / 3) + ' ' + yr : '3M to ' + c.end;
+            return mo + 'M to ' + c.end;
+        }
+        /* build a PENDING set of filing values - shown in the editor, not yet applied */
+        function onPeriodChange() {
+            const p = PARSED;
+            const c = DURATIONS[parseInt(document.getElementById('periodSelect').value, 10)];
+            if (!p || !c) return;
+            const f = snapFactor(c.days);
+            set('periodNote', '— ' + c.days + ' days, annualised ×' + f);
+            const instants = Object.values(p.contexts)
+                .filter(x => x.type === 'instant' && x.date <= p.periodEnd)
+                .sort((a,b) => b.date.localeCompare(a.date));
+            const latest = instants.length ? instants[0].date : null;
+            const vals = {periodLabel: periodLabel(c), factor: f};
+            const tags = {periodLabel: c.start + ' to ' + c.end,
+                          factor: c.days + '-day period, annualised x' + f};
+            const missing = [];
+            FILING_FIELDS.forEach(spec => {
+                const filt = spec.kind === 'duration'
+                    ? (x => x.start === c.start && x.end === c.end)
+                    : (x => x.date === latest);
+                const hit = spec.kind === 'shares' ? null
+                          : pickFact(p, TAGMAP[spec.k], spec.kind, filt);
+                if (spec.kind === 'shares') {
+                    const s = resolveShares(p, c, latest);
+                    if (s) { vals[spec.k] = s.value; tags[spec.k] = s.note; }
+                    else {
+                        vals[spec.k] = MODEL[spec.k];
+                        tags[spec.k] = '<strong>NOT FOUND</strong> &mdash; no share count tagged, kept the current value';
+                        missing.push(spec.k);
+                    }
+                } else if (hit) {
+                    /* EBIT can legitimately be negative - keep its sign. Everything else is a
+                       magnitude the model adds or subtracts itself. */
+                    vals[spec.k] = Math.round((spec.signed ? hit.value : Math.abs(hit.value)) / 1e6);
+                    tags[spec.k] = hit.tag + (spec.signed && vals[spec.k] < 0 ? '  (operating LOSS)' : '');
+                } else if (spec.adj) {
+                    /* no charge tagged = no such charge in this period */
+                    vals[spec.k] = 0;
+                    tags[spec.k] = 'not reported in this filing &mdash; set to 0 (no such charge this period)';
+                } else {
+                    /* a structural line really should be present - keep what we have and say so */
+                    vals[spec.k] = MODEL[spec.k];
+                    tags[spec.k] = '<strong>NOT FOUND</strong> &mdash; kept the current value, check this one';
+                    missing.push(spec.k);
+                }
+            });
+            const zeroed = FILING_FIELDS.filter(s => s.adj && vals[s.k] === 0 && MODEL[s.k] !== 0).map(s => s.k);
+            PENDING = {
+                vals, tags, missing, zeroed, file: LAST_FILE,
+                company: p.company, formType: p.formType, periodEnd: p.periodEnd,
+                asOfLabel: new Date(p.periodEnd + 'T00:00:00')
+                    .toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'}),
+                provenance: (p.company || 'filing') + ' Form ' + (p.formType || '') + ' for the period ended ' + p.periodEnd
+            };
+            renderEditor();
+            if (PENDING_NOTE) {
+                const log = document.getElementById('parseLog');
+                const extra = [];
+                if (PENDING.zeroed.length)
+                    extra.push('Add-backs not reported in this filing, set to 0: ' + PENDING.zeroed.join(', ')
+                             + '\n  (carrying the old figures forward would invent charges that never happened)');
+                if (PENDING.missing.length)
+                    extra.push('NOT FOUND, kept the current value: ' + PENDING.missing.join(', ')
+                             + '\n  Review these before applying.');
+                if (extra.length) log.textContent += '\n\n' + extra.join('\n');
+                PENDING_NOTE = false;
+            }
+        }
+        /* ================= PRICE ================= */
+        async function fetchCurrentPrice() {
+            const btn = document.getElementById('refreshPriceBtn');
+            if (btn) { btn.disabled = true; btn.textContent = 'LOADING...'; }
+            setStatus('fetching quote from Finnhub...');
+            let price = null, reason = '';
+            const shared = qcacheGet(TICKER);
+            if (shared) {
+                setStatus('price $' + shared.c.toFixed(2) + ' from the shared quote cache '
+                    + '(fetched by another page moments ago) - retrieved ' + new Date().toLocaleString(), true);
+                setSource('(live from Finnhub, via shared cache)');
+                rebuild(shared.c);
+                if (btn) { btn.disabled = false; btn.textContent = 'REFRESH ' + TICKER; }
+                return;
+            }
+            try {
+                const res = await fetch('https://finnhub.io/api/v1/quote?symbol=' + TICKER + '&token=' + FINNHUB_API_KEY);
+                if (!res.ok) {
+                    reason = (res.status === 401 || res.status === 403) ? 'API key rejected'
+                           : res.status === 429 ? 'rate limit exceeded' : 'HTTP ' + res.status;
+                } else {
+                    const data = await res.json();
+                    if (data && typeof data.c === 'number' && data.c > 0) {
+                        price = data.c;
+                        qcachePut({[TICKER]: {c: data.c, ms: (data.t ? data.t*1000 : Date.now())}});
+                    }
+                    else reason = 'no quote returned for ' + TICKER;
+                }
+            } catch (e) {
+                reason = 'network/CORS error';
+                console.warn('Finnhub unreachable, using the baked-in close:', e && e.message);
+            }
+            try {
+            if (price !== null) {
+                setStatus('live price $' + price.toFixed(2) + ' from Finnhub — retrieved ' + new Date().toLocaleString(), true);
+                setSource('(live from Finnhub API)');
+                rebuild(price);
+            } else {
+                setStatus('Finnhub unavailable (' + reason + '). Showing fallback price of $'
+                    + FALLBACK_PRICE.toFixed(2) + ' — valuation below is NOT based on a live quote.', false);
+                setSource('(FALLBACK — not live)');
+                rebuild(FALLBACK_PRICE);
+            }
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'REFRESH ' + TICKER; }
+            }
+        }
+        function setStatus(msg, ok) {
+            const el = document.getElementById('priceStatus');
+            if (!el) return;
+            el.textContent = msg;
+            el.style.fontWeight = ok === false ? 'bold' : 'normal';
+            el.style.borderLeft = ok === undefined ? '3px solid #999' : (ok ? '3px solid #000' : '3px solid #c00');
+            el.style.color = ok === false ? '#c00' : '#000';
+        }
+        function setSource(txt) {
+            const el = document.getElementById('priceSource');
+            if (el) el.textContent = txt;
+            const hdr = document.getElementById('hdrPriceSrc');
+            if (hdr) hdr.textContent = txt.replace(/^\(|\)$/g, '');
+        }
+        /* ================= WIRING ================= */
+        document.addEventListener('DOMContentLoaded', () => {
+            const dz = document.getElementById('dropzone');
+            const fi = document.getElementById('fileInput');
+            ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => {
+                e.preventDefault(); e.stopPropagation(); dz.classList.add('dragover');
+            }));
+            ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => {
+                e.preventDefault(); e.stopPropagation(); dz.classList.remove('dragover');
+            }));
+            dz.addEventListener('drop', e => {
+                const f = e.dataTransfer.files;
+                if (f && f.length) handleFile(f[0]);
+            });
+            fi.addEventListener('change', e => {
+                if (e.target.files.length) handleFile(e.target.files[0]);
+            });
+            /* stop the whole window from navigating away on a stray drop */
+            ['dragover', 'drop'].forEach(ev =>
+                window.addEventListener(ev, e => { if (e.target !== dz) e.preventDefault(); }));
+            fetchCurrentPrice();
+        });
+    </script>
+</body>
+</html>

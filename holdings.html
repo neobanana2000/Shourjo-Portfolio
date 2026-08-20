@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Portfolio Holdings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background: #f5f5f5;
+            color: #000;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .top-controls {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .top-controls-left {
+            font-size: 11px;
+            color: #666;
+            flex: 1;
+        }
+
+        .top-controls-right {
+            flex-shrink: 0;
+        }
+
+        header {
+            border: 2px solid #000;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #fff;
+        }
+
+        header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .header-controls {
+            margin-top: 15px;
+        }
+
+        .search-box {
+            margin-bottom: 15px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #000;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .refresh-btn {
+            padding: 10px 20px;
+            border: 2px solid #000;
+            background: #fff;
+            font-family: monospace;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .refresh-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .refresh-btn.loading {
+            opacity: 0.6;
+        }
+
+        #lastUpdate {
+            font-size: 12px;
+            margin-top: 10px;
+            color: #666;
+        }
+
+        .holdings-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .holding-card {
+            border: 2px solid #000;
+            background: #fff;
+        }
+
+        .card-header {
+            border-bottom: 2px solid #000;
+            padding: 15px;
+            cursor: pointer;
+            background: #f0f0f0;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header:hover {
+            background: #e0e0e0;
+        }
+
+        .card-info {
+            flex: 1;
+        }
+
+        .card-title {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .card-ticker {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .card-price {
+            text-align: right;
+            min-width: 150px;
+        }
+
+        .card-price-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .card-price-currency {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .card-price-loading {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .toggle-btn {
+            font-size: 18px;
+            width: 30px;
+            text-align: center;
+            margin-left: 10px;
+        }
+
+        .card-content {
+            padding: 15px;
+            display: none;
+            background: #fafafa;
+        }
+
+        .card-content.active {
+            display: block;
+        }
+
+        .content-section {
+            margin-bottom: 20px;
+            border-left: 3px solid #000;
+            padding-left: 15px;
+        }
+
+        .content-section h3 {
+            font-size: 13px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .content-section p {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #000;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            font-size: 14px;
+        }
+
+        .dcf-btn {
+            margin-left: 8px;
+            padding: 4px 10px;
+            border: 1px solid #000;
+            background: #fff;
+            font-family: monospace;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .dcf-btn:hover {
+            background: #f0f0f0;
+        }
+    
+        .topbar { border:3px solid #000; background:#fff; padding:10px 15px;
+                  margin-bottom:16px; display:flex; align-items:center;
+                  justify-content:space-between; gap:14px; flex-wrap:wrap; }
+        .topbar h1 { font-size:21px; letter-spacing:2px; white-space:nowrap; margin:0; }
+        .sitenav { display:flex; gap:8px; flex-wrap:wrap; }
+        /* no letter-spacing here: .top a on the home and performance pages has none,
+           and 1px across "PERFORMANCE METRICS" made this bar 19px wider than theirs */
+        .sitenav a { padding:8px 15px; border:2px solid #000; background:#000; color:#fff;
+                     font-family:inherit; font-size:12px; font-weight:bold;
+                     text-decoration:none; white-space:nowrap; }
+        .sitenav a:hover { background:#fff; color:#000; }
+        /* the page you are on is the inverted one, so it reads as "you are here" */
+        .sitenav a.here { background:#fff; color:#000; cursor:default; }
+        @media (max-width:700px) {
+            .topbar { flex-direction:column; align-items:flex-start; }
+            .topbar h1 { font-size:16px; letter-spacing:1px; }
+        }
+
+        /* same treatment for the buttons on this page */
+        .dcf-btn, .refresh-btn { background:#000 !important; color:#fff !important; }
+        .dcf-btn:hover, .refresh-btn:hover { background:#fff !important; color:#000 !important; }
+        .dcf-btn:disabled, .refresh-btn:disabled { opacity:.4; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="topbar"><h1>SHOURJO'S PORTFOLIO</h1><nav class="sitenav"><a href="index.html">HOME</a><a href="performance.html">PERFORMANCE METRICS</a><a href="holdings.html" class="here">HOLDINGS</a></nav></div>
+        <header>
+            <h1>HOLDINGS</h1>
+            <p>27 companies &middot; live prices from Finnhub</p>
+            <div class="header-controls">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search by company name or ticker...">
+                </div>
+            </div>
+        </header>
+
+        <div class="top-controls">
+            <div class="top-controls-left">
+                <div id="lastUpdate"></div>
+                <div id="finnhubNote">Finnhub API - Live stock prices enabled</div>
+            </div>
+            <div class="top-controls-right">
+                <button class="refresh-btn" id="refreshBtn">REFRESH PRICES</button>
+            </div>
+        </div>
+
+        <div class="holdings-list" id="holdingsList">
+            <!-- Holdings will be generated by JavaScript -->
+        </div>
+
+    </div>
+
+    <script>
+/* ============================================================
+   SHARED QUOTE CACHE
+
+   Every page on this site needs the same quotes, and the Finnhub free tier
+   allows 60 calls a minute. Loaded independently that is index 33 +
+   performance 33 + holdings 27 + three DCF pages = 96 calls, so whichever
+   page you opened second used to receive HTTP 429 and quietly fall back to
+   its baked-in prices — which looked like "Finnhub works on some pages and
+   not others" with no visible cause.
+
+   All pages now read and write one cache in the browser. The first page to
+   load pays for the quotes; every other page reads them for free until they
+   expire. Entries are timestamped individually, so a page that only needs
+   one symbol never refreshes the other thirty-two.
+   ============================================================ */
+var QC_KEY = 'shourjo_quotes_v1';
+var QC_TTL = 120000;                       /* 2 minutes */
+
+function qcacheAll() {
+    try { return JSON.parse(localStorage.getItem(QC_KEY) || '{}') || {}; }
+    catch (e) { return {}; }               /* storage disabled — behave as a miss */
+}
+function qcacheGet(sym) {
+    var e = qcacheAll()[sym];
+    if (!e || !(e.c > 0)) return null;
+    if (Date.now() - e.at > QC_TTL) return null;
+    return {c: e.c, ms: e.ms};
+}
+function qcachePut(map) {
+    try {
+        var q = qcacheAll(), now = Date.now();
+        for (var k in map) if (map[k] && map[k].c > 0)
+            q[k] = {c: map[k].c, ms: map[k].ms || now, at: now};
+        localStorage.setItem(QC_KEY, JSON.stringify(q));
+    } catch (e) { /* storage full or disabled — the page still works, just uncached */ }
+}
+function qcacheAge() {
+    var q = qcacheAll(), newest = 0;
+    for (var k in q) if (q[k] && q[k].at > newest) newest = q[k].at;
+    return newest ? Math.round((Date.now() - newest) / 1000) : null;
+}
+
+</script>
+<script>
+        const holdings = [
+            {
+                name: "Teva Pharmaceutical",
+                ticker: "TEVA",
+                nativeTicker: "TEVA.TA",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Teva is in the generic drug industry, which is easy for anyone to make and is constantly getting cheaper. It is also in the biosimilar industry, which means that they are harder to produce. It also has branded products, which is the highest-return area of the overall pharmaceutical industry. Specifically, the long-acting injectables are the highest return.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Teva is the largest generic drug maker in the world. The main positioning advantage comes from its three branded products. Austedo, which treats involuntary movement disorders and is the main profit driver; Uzedy, a long-acting schizophrenia injection; and Ajovy, for migraine prevention. The stock is relatively cheap because the company is recovering from opioid lawsuits.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>The main catalyst is the strong recovery. Moody's upgraded Teva to investment grade in August 2026, after Fitch also did the same in May. The next upcoming event is an FDA decision on a long acting injection for schizophrenia.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>One drug, Austedo, carries the whole growth story separate from recovery. A competitor will cause slowdowns in actual growth. The company is still paying off its opioid settlements. Additionally the company is mainly Israeli and as a result is risky because of the geopolitical climate.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long because it is a recovering company and there is potential for growth. We are getting growing branded drugs attached to a generics business which generates cash for a discount. We need to look out for any competitive threat to Austedo and for management borrowings for any acquisitions now that debt is being controlled.</p>
+                </div>`
+            },
+            {
+                name: "CRH plc",
+                ticker: "CRH",
+                nativeTicker: "CRH",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>CRH operates in the building materials industry. Demand is split between public infrastructure and private / residential construction. There is additional demand from the data center buildout.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Roughly 63% of revenue is in the Americas. It is Irish-based but US-listed and US-managed. In the United States it is the leading aggregates provider and asphalt producer.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>US government spending supports its Road Solutions business. There has been a divestiture of construction accessories and the lawn and garden segment. This produced a $266M pre-tax gain and further concentrated the business on materials and infrastructure.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Construction demand is cyclical and rate-sensitive. Net debt is 2.3x EBITDA, which means they are moderately leveraged. Results are seasonal. Additionally, they participate in a lot of acquisitions, where there is integration and overpayment risk.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Long, on the strength of a moat that is physical: aggregates are too heavy to ship far, so a quarry near a growing city holds durable pricing power, and geography does the work that brand or technology does elsewhere in the book. Acquisition discipline decides this one &mdash; CRH buys constantly, and in a cyclical industry the price paid on each bolt-on drives the return far more than the pace of dealmaking does.</p>
+                </div>`
+            },
+            {
+                name: "Imperial Oil",
+                ticker: "IMO",
+                nativeTicker: "IMO",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Imperial Oil is in the oil production and refining industry. The industry is cyclical and prone to supply shocks. The current Iran conflict has positive effects for producers operating outside the contested straits. The oil industry carries high maintenance capex costs.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Imperial Oil is in the Canadian oil industry. It is benefiting from higher oil prices and increased demand from other countries. Canadian oil sands are long-term assets: they are vast and will take a long time to deplete.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>H1 2026 was strong: pre-tax income of C$4,092M against C$2,932M a year earlier, up 40%, with Q2 alone up 130%. Capital spending of C$1,005M for the half runs at roughly maintenance level against D&amp;A of C$1,031M, so cash generation stays available for returns. Capital returns are steady &mdash; C$771M of dividends paid in the half and a new 12-month buyback effective June 29, 2026 for up to 24.2 million shares, about 5% of the count, with ExxonMobil participating pro rata to hold its stake.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Earnings are concentrated in one country and one resource basin. ExxonMobil holds roughly a 70% stake, which classifies all other holders as minority and leaves them without a say in the company. Long-term demand for oil is declining as the world shifts toward renewables, and oil prices are volatile from geopolitics and supply.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long, sized for the fact that we are minority passengers &mdash; ExxonMobil's 70% stake sets capital allocation, so our return rests on Exxon continuing to favour buybacks and dividends over reinvestment. The oil sands are a reserve base measured in decades, which makes terminal demand a question of timing rather than of survival, and leaves the price of oil as the variable that actually decides the position.</p>
+                </div>`
+            },
+            {
+                name: "Tower Semiconductor",
+                ticker: "TSEM",
+                nativeTicker: "TSEM",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the analog foundry industry. The dominant trend is the AI-driven data center buildout. As AI scales, copper cannot carry the bandwidth, so silicon is mandatory. This has turned a previously niche process into one of the fastest-growing product categories in the semiconductor industry.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Tower is a mid-sized Israeli specialty foundry with plants in Israel, the US, Japan, and Italy. It is differentiated because of its position in the silicon photonics sector. The broader portfolio spans RF CMOS, BCD power management, image sensors, and MEMS, which provides a stable base but grows slowly. Intel attempted to acquire Tower, but the deal collapsed because of Chinese regulatory approval.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>The silicon photonics ramp-up is the main catalyst. It is the fastest-accelerating sector in the whole industry. Revenue for FY 2026is guided to a record $520mn, up 31% year over year, and management raised 2028 targets to $3.6bn revenue and $1.2bn net profit.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Customer concentration is the biggest risk. A small number of companies drive demand, so it's more volatile and risky. The silicon photonics sector is highly desirable, and there are no drastic technological moats. Tower's positioning comes from being an early player. Competition will rise in the future. Additionally, the company is mainly Israeli and, as a result, is risky because of the geopolitical climate.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Long, but sized as a higher-risk position than our other AI-linked names. The distinguishing feature versus most AI derivative plays is that the demand is contracted and prepaid rather than projected — customers have put $290mn down and signed $1.3bn for 2027, which is a far better signal than any management forecast.</p>
+                </div>`
+            },
+            {
+                name: "Airbus SE",
+                ticker: "EADSY",
+                nativeTicker: "AIR.PA",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the commercial aircraft manufacturing industry where there is a current strain due to low supply. Airliner orders extend a decade out, and the industry has a fleet that needs replacement. Aerospace has also been broadly exempt from tariffs.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Airbus is the leader in commercial aircraft, overtaking Boeing during the 737 MAX crisis. The A220 fills the smaller planes while the A350 competes with Boeing's 787. The biggest problem is that Airbus does not own its engine supply. The company is controlled by CFM and Pratt & Whitney rather than by its own factories.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Airbus had about 870 deliveries for 2026. The main structural driver is the A320 rate increase toward 70–75 per month by end-2027, stabilizing at 75 — roughly a third more output than today from a backlog that is already sold.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Airbus is paced by Pratt & Whitney because they have the airframes completely built; however, they lack the engines due to low supply. Boeing is recovering and reportedly winning orders with US political backing, which erodes Airbus's advantage over time</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Long, on the same aerospace cycle as Safran but with a different risk profile — Airbus owns the demand and the backlog, while Safran owns the aftermarket annuity. We prefer Safran's economics, but Airbus offers a decade of visible revenue at a lower multiple, with the A321 franchise effectively uncontested. The key insight is that every quarter of delivery delay pushes revenue right rather than destroying it, since the aircraft are already sold.</p>
+                </div>`
+            },
+            {
+                name: "Banco Santander",
+                ticker: "SAN",
+                nativeTicker: "SAN.MC",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in retail and commercial banking across Europe and the Americas. The European rate has stabilized. Latin American banking is seeing growth. European banks are initiating capital return policies. In the UK, the Consumer finance and auto lending sectors are facing large regulatory scrutiny.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Santander is the most geographically diversified European bank with significant scale in Spain, the UK, Brazil, Mexico, Poland, and US consumer finance. This breadth has smoothed earnings across all the different cycles, but has historically produced earnings under the other banks. Its genuine competitive advantage is scale in Brazil and Mexico, where it is a top-tier player, and a global consumer finance platform in auto lending that few European banks can match.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>A lot of capital returns are taking place. At least 10 billion euros of buybacks are to come from 2025 and 2026 earnings. There will be a 35% cash dividend payout. Anything above a 13% CET1 ratio will be liquidated and returned.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Brazil poses a risk because its GDP growth is low. Additionally, the UK motor finance issues have already caused a 207 million euro charge. Santander has also missed multi-year targets, which causes its stock to trade at a discount.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long because it is sized smaller than BBVA and it is in the same emerging market growth thesis, which causes a lower return; however is diversified. The redistribution of capital is good news. We need to be on the lookout for the UK motor-related issues.</p>
+                </div>`
+            },
+            {
+                name: "Safran SA",
+                ticker: "SAFRY",
+                nativeTicker: "SAF.PA",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the commercial aerospace industry. Global air traffic has fully recovered. Boeing and Airbus are both driving older fleets because new aircraft cannot be delivered fast enough. This means that there is increased demand for Safran from more shop visits and maintenance. The industry is constrained by supply chain problems.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Safran's main asset is its international joint venture with GE Aerospace to produce the LEAP engine. The only option on the Boeing 737 MAX and the Airbus A320neo. Safran also holds strong positions in landing gear and aircraft interiors. This has been expanded further by acquiring Collins Aerospace's flight control and actuation business, which is adding 1.5 billion USD of revenue.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Civil engine spare parts sales have increased 27.9 percent in dollar terms. LEAP deliveries are now guided to high-teens growth with over 500 engines delivered for a fourth consecutive quarter. The group revenue guidance has been lifted to 15% growth, and recurring operating income has increased. Engines are sold at or below cost, and the money is made over decades of parts and maintenance. So the growth of LEAP engines ensures future revenue.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Supply chain constraints are the biggest problem. Safran cannot convert demand into revenue fast enough because the suppliers have not delivered casings and forgings. A French corporate surtax is causing about 500 million euros worth of FCF. The whole sector is also cyclical. A demand shock from conflict, fuel prices, or recession would hit revenue significantly.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Long, and the highest-quality industrial in the book. We are buying a duopoly position on the two best-selling narrowbody aircraft, where the installed base is growing rapidly, and the profitable aftermarket phase is still ahead of us rather than behind. We need to be on the lookout for supply chain constraints capping delivery growth.</p>
+                </div>`
+            },
+            {
+                name: "Sumitomo Corp",
+                ticker: "SSUMY",
+                nativeTicker: "8053.T",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>It is in the Japanese trading market. There is no Western equivalent. This sector is in the middle of a governance-driven re-rating. Trading houses have historically traded way below book value. Most are participating in asset recycling and buybacks. The commodity exposure means that results still swing with the resource prices.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Sumimoto corp is the smallest and the lowest returning behind Mitsubishi, Mitsui, Irochu, and Marubeni. Its portfolio is not as commodity-heavy, which decreases its beta. This also means it has less earnings potential. It has some damaged credibility with investors due to Madagascar nickel, Australian coal, and US shale products.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>There are multiple catalysts. Berkshire Hathaway has raised its stake to 10.5% in May 2026 and is crossing 10% in all the trading houses. Elliot management has also taken a stake. Management is participating in an 80 billion yen buyback and has raised the dividend forecast from 130 yen to 140 yen per share.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Sumitomo is cheap because of its impairment history. It has a long history of problems, which proves it's not just bad luck. Earnings are exposed to commodity prices. With dozens of unrelated subsidiaries and limited disclosure analysts cannot see the full picture. A yen apprecuatin would also cause cause compressed earnings reports.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long as it is the cheapest Japaneese tradinghouse. Sumimoto has the most room to improve while the others are reaching its limit. Berkshire and Elliot may influence that growth. We need to be on the look out for another large impairment which might stifle hopes of growth to fill its potential marketshare. Buybacks will ultimately help,p along with increased dividends.</p>
+                </div>`
+            },
+            {
+                name: "Mizuho Financial Group",
+                ticker: "MFG",
+                nativeTicker: "8411.T",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the Japanese banking sector. BOJ normalization, widening deposit-loan spreads, and governance reform focing cross shareholding disposals into buybacks. Japanese banks are pushing into fee income to reduce dependence on lending spread.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Mizuho is the smallest and historically weakest of the three megabanks. It has had multiple years of IT failures, which makes it trade at a discount to the other two megabanks. It has also been the most aggressive of the three in buying US investment banking capability through the Greenhill acquisition.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Capital return is stepping up alongside — the buyback authorization was raised to 200 billion yen in July 2026, and management has committed to over 350 billion yen of cross-shareholding reductions through FY2027. Fee income is the growth leg, via Greenhill in advisory and the Rakuten Bank and Rakuten Card alliances for digital retail reach.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>The BOJ path is the shared risk amongst all banks in the Japanese industry. Mizuho's main risk is its documented history of failing at integration. It is currently integrating a US advisory business and building consumer finance partnerships with a technology group. The Greenhill acquisition causes the US capital market cyclicality to mix into the earnings. Additionally, its asset management business is a weak spot, being the smallest of the three megabanks.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderately long, mainly because of rising interest rates in Japan. We need to be on the lookout for another IT or operational failure, which would counter the buyback benefits. We also need to look at future Rakuten and Greenhill partnership fee generation.</p>
+                </div>`
+            },
+            {
+                name: "Banco Bilbao Vizcaya",
+                ticker: "BBVA",
+                nativeTicker: "BBVA.MC",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the retail and comercial banking sector. There is an emerging markit credit growth. There is a sector wide pattern of returning excess capital through buybacks</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>BBVA is a Spanish bank whos earnings are in majority emergin markets. This makes it very different from its peers like Santander or Caxia bank. BBVA Mexico is the country's largest bank with a quarter of the market and returns well above anything in Europe. Group ROTE is around 21% and is the highest of any Euripean bank.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Rather than spending 17 billion euros on a domestic aquistioon of Sabadell, BBVA redirected the capital into a 3.96 billion buyback. This was completed in Auguest 2026 and immediately after that another 2 billion euro program was launched. The stock has risen about 34% since the bid collapsed.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Concentration is the core issue — Mexico drives a disproportionate share of profit, so Mexican rate cuts, peso depreciation, or a US-driven slowdown transmit directly to group earnings, and USMCA renegotiation and tariff policy are live variables. Turkey remains a structural risk with hyperinflation accounting, currency depreciation, and unorthodox policy, with cost of risk guidance already revised to around 220bps. Mexican cost of risk guidance below 335bps is high in absolute terms and reflects genuinely riskier consumer lending. Spain contributes stability but limited growth, so the domestic business cannot offset an emerging market shock. The buyback pace also depends on capital generation continuing at current levels.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long because it is the highest returning bank on portfolio so far. The mexican franchise is difficult to replicate for other banks and it has strong market share there. We need to be on the lookout ofr mexican rate cuts compressing the highest margin part of BBVA's books.</p>
+                </div>`
+            },
+            {
+                name: "Sumitomo Mitsui Financial",
+                ticker: "SMFG",
+                nativeTicker: "8316.T",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the Japanese banking industry. It is driven by the same structural repricing that is caused by the BOJ normalization. Government reforms are also causing cross-shareholding disposal, which can cause more buybacks.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>SMFG is the largest Japanese megabank and is historically the most efficient and highest-returning of the three megabanks. Sumitomo Mitsui Financial has taken a partnership approach with a 20% stake in Jefferies instead of building its own investment bank. Additionally, it has a 25% stake in Yes Bank instead of building an Indian sector. As a result, this acquisition strategy has lower risk and lower control.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Management has set a credible earnings path. Rate normalization drives the Japanese sector. The Yes Bank stake makes it the largest shareholder in an Indian bank. Indian Interest rates may go up in the future because Inflation is creeping up. There will be a 200 billion yen buyback in the future.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>A stall in BOJ hikes can cause growth to be stifled. Sumitomo Mitsui Financial's stakes in other companies are enough to feel their volatility and reputation, yet not large enough to have a say in their strategy. Yes Bank is a recovering asset. Yes Bank in particular is a turnaround from a 2020 near-failure in a market where SMFG has limited operating history.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long and is arguably better run than the other two mega banks we hold. SMFG has a higher return on a smaller balance sheet. It has already cleared its 10% ROE goal. We will be getting the same BOJ rate benefits as MUFG, plus exposure in the Indian subcontinent. We should be on the lookout for BOJ hiking slower than expectations and execution at Yes Bank, where MUFG does not have significant control.</p>
+                </div>`
+            },
+            {
+                name: "UBS Group AG",
+                ticker: "UBS",
+                nativeTicker: "UBSG.S",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the global wealth management and investment banking industry. Rising global wealth and strong equity markets are generating large fees. Wealth management is attractive because revenue scales with client assets rather than any balance sheet risk. It earns multiples better than traditional banking.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Is the dominant global wealth manager and Switzerland's only large bank with record group invested assets of about 7.3 trillion. The Credit Suisse acquisition removed its closest competitor and handed it a client base at a really low price. UBS has the stronger international franchise against goldmansachs and JPMorgan in investment banking.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>The integration with Credit Suisse is nearly done, and cost savings have reached 12.6 billion USD. Global wealth management pulled USD 36 billion worth of assets, showing that customer confidence remains high despite the issues with Credit Suisse.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Swiss rules are the biggest risk and have not yet been resolved. The April proposal requires UBS to back foreign subsidiaries with Common Equity Tier 1. This adds 20 billion USD of capital under estimates. This capital is going to come from reduced buybacks. UBS has responded with a relocation of its headquarters to the United States. Beyond regulation, wealth management revenue is levered to market levels. If there is a drawdown in the market, fees will be cut directly. Credit Suisse's negative legacy and legal exposures still haven't fully worn off.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long, with the caveat that this is a regulatory bet as much as a fundamental one. Operationally, the story is close to ideal — the integration is finishing ahead of concerns, cost savings are landing, and clients are adding assets rather than leaving, which was the main risk two years ago. The problem is that buybacks may pause because of the Swiss legislation.</p>
+                </div>`
+            },
+            {
+                name: "ING Groep N.V.",
+                ticker: "ING",
+                nativeTicker: "INGA.AS",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Rates in European retail and commercial banking, where policy rates have stabilized after the ECB's cutting cycle. Banks are still earning healthy margins for deposits. The sector's earnings are dependent on volume growth and fee income rather than any rate tailwinds. Buybacks are the dominant use of excess capital in this sector.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>ING is a Dutch bank with a digital-first retail franchise operation in Germany, Spain, and Poland. This low-cost deposit base gives it better cost-to-income ratios compared to other banks. Its low cost because it gets money from retail deposits without having to borrow at costs like other banks have to. It is cleaner but more rate-dependent than peers in terms of interest income because it's less diversified.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Earnings are ahead of plan where they are up 8%. ING has high capital return. Its Common Equity Tier 1 (Ratio of highest-quality capital to its risky assets) is held at 13%.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>The main one is that further ECB cuts compress deposit margins — ING's deposit-funded model is exactly what makes it rate-sensitive in both directions. Deposit competition is the second-order version of the same risk, where ING has to pay up to retain balances even if policy rates hold. Credit costs are currently benign, but European commercial real estate and consumer lending would deteriorate in a eurozone slowdown.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long based on capital returns instead of growth. We are being paid a high distribution yield. We should be on the lookout for the ECB cutting further than expected.</p>
+                </div>`
+            },
+            {
+                name: "ASML Holding NV",
+                ticker: "ASML",
+                nativeTicker: "ASML.AS",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the semiconductor industry, specifically lithography. This sector is in a huge upcycle due to demand driven by AI data centers. The market is geopolitically restricted by US and Dutch export controls stopping sales into China.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>ASML is in the strongest competitive position in the entire semiconductor supply chain. They have a monopoly in lithography. Samsung and TSMC cannot function without ASML lithography. This gives it pricing power and visibility.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Demand is really high on AI capex. Sales are up about 5 billion yen. Its HIGH-NA sector is moving from development to production, with Intel being its first high-volume user. This strengthens its position in future markets as ASML develops more advanced technology.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Orders are concentrated among a handful of customers. Any capex movement from TSMC, Samsung, and Intel will move the needle for ASML drastically. The company also has stopped its disclosure of quarterly meetings, which raises negative speculation.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Long, as it is the highest quality asset in the AI supply chain. It has a monopoly with a multi-year technology runway. We need to be on the lookout for the MATCH Act advancing. We also need to look out for any slowdowns in the overall spending cycle for AI. Specifically, we should look for signs in hyperscaler capex, since reduced future bookings will be seen on their sheets earlier than in ASML due to its reduced reporting frequency.</p>
+                </div>`
+            },
+            {
+                name: "Honda Motor Co",
+                ticker: "HMC",
+                nativeTicker: "7267.T",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the global automobile sector. The automotive sector is in expansion. US tariffs hit Japanese exporters. The motorcycle industry is growing in Asia and South America.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Honda has a motorcycle segment that is a global leader, with the biggest share in Southeast Asia and India. It had record-high profits in 2026. The automotive sector of Honda competes with Toyota and Volkswagen. Honda lacks a position in China. Honda has strong hybrid technology; however, its EV positioning is lacking because of late entry.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Honda has previous EV-related losses, and management is cutting EV production. Honda is recovering from its EV-related stumble, and this is a good time to invest because of the future growth coming out of a dip. The general business overall is supported by its Motorcycle sector, which sees independent growth.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Tariffs are affecting Honda's Western market. If Honda is not able to recover from its EV losses, we will be seeing a further downturn. Japanese yen appreciation is also making goods more expensive for the global market. Additionally, there is speculation about a Honda and Nissan merger revival. This could cause problems if it happens because of initial integration risk.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long because Honda is a company in recovery. The EV losses are largely behind us, and management has stopped spending in a market that did not have any desired effects. We need to be on the lookout for any renewed Nissan talks, as that would be a negative for us in the shorter term.</p>
+                </div>`
+            },
+            {
+                name: "Mitsubishi UFJ Financial",
+                ticker: "MUFG",
+                nativeTicker: "8306.T",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the Japanese banking industry, which is facing higher interest rates. The rising policy rates are causing widening of spreads in loans. Also, Japanese governance is causing banks to sell cross-shareholdings, which frees up capital for buybacks.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Mitsubishi UFJ Financial is Japan's largest bank by assets and is the most diversified out of the large banks in Japan. It has US and Southeast Asian franchises and a 24% stake in Morgan Stanley. Its advantage against SMFG and Mizuho is its scale and global reach. Even though it has this reach, it is the least efficient of the mega banks. Net interest income was up by 19.3%.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>The bank is very sensitive to rate changes; each 0.25 basis point hike adds about 0.18trillion japanese yen to interest income. The rates influenced by the BOJ keep rising as well due to inflationary pressures. Management is targeting over 10% profit growth. Additionally, capital returns are the second catalyst. Buybacks and cross-shareholding disposal, added to the sale of the Morgan Stanley stake, will cause the stock price to go up.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>The largest risk is BOJ policy. If there is a drop in rates, it will compress Return on equity. Higher rates are also causing mark-to-market losses on the bank's foreign brand portfolio.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long because it is Japan's largest bank with 2 independent tailwinds. The return on equity path from 11.3% to 12% is possible. We need to be on the lookout for slower BOJ hikes than the assumptions. We should also look for portfolio losses from MTM securities.</p>
+                </div>`
+            },
+            {
+                name: "Kyocera Corp",
+                ticker: "KYOAY",
+                nativeTicker: "6963.T",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the electronic components and industrial materials industry. The AI data center buildout is the dominant demand driver right now. The broader sector remains cyclical; however, AI-linked product lines are ahead of the remaining mid-cycle positionings.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Kyocera is a diversified Japanese components maker rather than a focused specialist. The fine ceramics and semiconductor packaging product lines have technical advantages. But in general, it sits behind Murata and TDK. For printers and cutting tools, it competes in a low-growth environment. Kyocera's main concern is its historically low return on equity(4.3% FY26). This is well below what its equity should earn.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>There are two major catalysts. AI demand has caused earnings to grow, with an average growth across all sectors of 7.2%. Additionally, management is planning to sell a stake in KDDI, which is going to fund a buyback. This is being done in hopes of lifting return on equity to about 10% in the distant future.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>The stake that Kyocera holds in KDDI is a risk. Its equity position will take a long time to sell off. Additionally, the industry that it operates in is cyclical. If AI-related capex spending goes down significantly, then the company will face a downturn, as its non-AI segment sales are not strong enough to support it. Additionally, future currency appreciation may affect the economy negatively.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long because of strong AI-related growth. Additionally, this is a long because the KDDI stake will be converted into buybacks. Since this will take place in the distant future (2031), we need to be on the lookout for whether this actually happens. Additionally, we need to make sure that any AI-linked orders are rolling over into the next period to keep an eye out for the cyclicality.</p>
+                </div>`
+            },
+            {
+                name: "Repsol SA",
+                ticker: "REPYY",
+                nativeTicker: "REP.MC",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the oil and gas industry, specifically in refining. The sector is in a lower-price environment because of lower demand from low crude flows. Companies with growth are favored over renewable energy capacity.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Repsol is a midcap European company that has many larger competitors. It has a strong Spanish/Iberian and Venezuelan positioning built on decades of experience in the regions. The company lacks balance sheet size and diversity in its portfolio. The stock is more volatile to regional conflicts.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Upstream growth is occurring from the Pikka project in Alaska. The company has received a US license in Venezuela, which has caused operations to resume. Capital returns are at an all-time high (8%), and buybacks have increased. Europe has also seemingly better mitigated the Iran-related supply shocks.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Venezuela is a political risk. The US licenses can be revoked if a political issue arises. The company is also directly connected to the oil cycle, which is currently at middle positioning. Its renewables branch is capital-intensive and will only continue to function if there is demand from buyers. The largest risk is the company's mid-cap positioning, which makes it more risky than its peers.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long based on its capital returns and commitment to return cash flows from operations, not because of growth. The stock is trading at a discount compared to European peers, and we are being paid high single-digit dividends. We need to be on the lookout for US policy shifts on Venezuela.</p>
+                </div>`
+            },
+            {
+                name: "Orix Corporation",
+                ticker: "IX",
+                nativeTicker: "8591.T",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Orix operates in diversified financial services. The company is in asset management and equipment leasing specifically. The AI buildout has caused an increase in demand for leasing. The sector overall is sensitive to capital availability and interest rates.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Orix is a leading Japanese financial services player but faces huge global competition from players like GE Capital and Sumitomo Mitsui Financial. Orix's strength is in its diversified revenue streams. The company's main benefit is from the Japanese culture of equipment leasing; however, it lacks dominance in the global market.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>The rise of AI infrastructure demand in Japan is correlated with the Japanese culture of equipment leasing. Orix faces derived demand from the AI buildout, as the equipment needed is often leased in Japan.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Orix's profits were mainly driven by one-time sales instead of recurring revenue. Its US arm has had impairments. Weakening Chinese tourism is putting pressure on Kansai Airport assets. Currency appreciation can make Japanese goods more expensive.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long because of its diversity. Orix is at a discount right now. Bank of Japan activity should allow for wider lending spreads. We need to be on the lookout for further write-downs in the US portfolio and in its Kioxia-related activity, which could distort earnings.</p>
+                </div>`
+            },
+            {
+                name: "DBS Group Holdings Ltd",
+                ticker: "DBSDY",
+                nativeTicker: "D05.SG",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Operates in the banking and financial services sector, which is experiencing transformative growth across Asia, driven by an expanding middle-class population needing wealth management. Region-wide interest rates remain on the high end, which benefits banks as the cost of debt is high.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>DBS is Asia's largest bank by assets and is ahead of regional and Global competitors in digital banking innovation and in terms of South Asian market positioning. It clearly leads peers like OCBC, UOB, HSBC, and Citibank. In digital banking strategies and customer experience.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>The Asian market is less saturated, with a few companies competing for the largest region on the planet. Most countries are on the verge of raising interest rates, so there is a potential future upside in the banking industry, as the cost of debt will rise. The major driver is that GDP is growing at a high rate, meaning there is a lot of wealth being produced in Asia, and as a result, there is an increased need for banking services.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>The United States Federal Reserve's hawkish stance has the potential to raise interest rates, which would mean capital would leave Asia and flow into the United States due to higher rates interest rates.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long, as it is Asia's largest bank supported by strong demand driven by increases in gdp/wealth. We need to be on the lookout for future effects based on US Federal Reserve activity and its effect on the Asian banking system.</p>
+                </div>`
+            },
+            {
+                name: "Bridgestone Corp",
+                ticker: "BRDCY",
+                nativeTicker: "5108.T",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Bridgestone operates in the tire and rubber products industry, which is experiencing cyclical growth. Additionally, some supporting influences include electric vehicle adoption and autonomous vehicle development. Growth, however, is still largely cyclical.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Bridgestone is the largest tire manufacturer and competes, if not outcompetes its global peers. Bridgestone's strength is its brand name due to the rubber industry having limited product-level differentiation. Bridgestone also excels because of its scale rather than any technological moats.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Cyclical growth in the automotive industry from the trough in vehicle production post-pandemic.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>The cyclical nature of the tire industry is also its risk. If the expansion reverses, the industry loses revenue. Bridgestone-specific risks, however, are lower-cost Chinese competitors. Japanese yen appreciation pressures export competitiveness because Japanese goods become more expensive. Global inflationary pressures might lead to an increase in raw material costs.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Speculative long as long as the tire industry stays in expansion. We should exit once the expansion reverses. If we decide to take advantage of the expansion in this industry best to go with the current best performer because there is limited scope for differentiation in it. Our goal would be to take advantage of the US-allied Japanese economies while also diversifying the portfolio.</p>
+                </div>`
+            },
+            {
+                name: "Renesas Electronics Corp",
+                ticker: "RNECY",
+                nativeTicker: "6723.T",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Renesas operates in the semiconductor industry, and they specialize in the microcontrollers and power management sectors. The industry faces strong demand from the AI buildout. Additionally, the electrification of automobiles is a further cause for growth in demand for this sector.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Renesas is a strong global player but not dominant in any specific segment. The company is competitive in automotive semiconductors and industrial applications, competing with Texas Instruments and NXP Semiconductors. Renesas' strength comes from its product diversity and its reputation.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>The AI buildout is a potent driver for revenue growth. A more unique growth catalyst is the electrification and automation of cars. Renesas captures a large market share for automotive semiconductors. Additionally, potential government subsidies in Japan can become a future growth catalyst.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>There is intense competition from larger companies. Geopolitical restrictions may stop exports to China. Japanese Yen appreciation also makes exports less competitive because they tend to be more expensive.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Moderate long, as a diversified semiconductor exposure benefiting from AI infrastructure and, more importantly, automotive tailwinds. This will be our supporting position rather than a core holding.</p>
+                </div>`
+            },
+            {
+                name: "Advantest Corp",
+                ticker: "ATEYY",
+                nativeTicker: "6857.JPX",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Advantest is in the automatic semiconductor test equipment industry, which is experiencing record demand from AI chip manufacturing. The test equipment is downstream from fab equipment but is crucial to chip production. Newer advanced-node-based chips require testing to catch defects. Developments in chip technology create derived demand for the testing industry.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Advantest is the global market leader for automatic test equipment. They control about 50 percent of the worldwide market. They have strong relationships with TSMC, Samsung, and Intel. Advantest has large technological moats around test algorithms and its ability to tailor requests to customers. Rivals succumb to Advantest's Japanese heritage and manufacturing efficiency. These allow it to have cost advantages over all of its competition. Additionally, automatic test equipment has really high barriers to entry, which reduce the risk of Advantest losing market share.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Explosive demand for chip testing and potential supply chain diversification favoring Japan-based automatic testing equipment over the United States are some of the key drivers. Advantest is also acquiring new customers from the CHIPS Act.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Potential export restrictions to China are one of the major risks. Japanese Yen is currently under inflationary pressure from the United States Federal Reserve's assistance. This can make Japanese goods more expensive in the global market.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Strong as long as it captures a majority market share in a high-demand and high-barrier-to-entry industry. Even though there are potential risks with the cyclicality of the global economy, the current strong standing can hold up to any potential downsides, allowing us to catch them before we realize any losses.</p>
+                </div>`
+            },
+            {
+                name: "Kioxia Holdings Corporation",
+                ticker: "KXIAY",
+                nativeTicker: "4004.JPX",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Kioxia is in the NAND flash memory semiconductor sector, which is experiencing huge demand from AI data centers that require massive storage capacity for training datasets. Data center buildouts and cloud infrastructure expansion are driving record demand for SSDs and storage solutions. Geopolitical supply chain concerns are causing diversification away from Korea-based suppliers like Samsung and SK Hynix.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Kioxia is competitive but not dominant, as its ranked 4th globally in NAND flash memory market share behind larger competitors. Unlike its other competitors who have integrated chip design and manufacturing, Kioxia only manufactures NAND flash memory. It, however, benefits from partnerships in the West and emerging demand for Japan-based equipment due to geopolitical tensions.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Main catalyst is the growth in AI data center storage demand, which requires newer, higher-capacity SSDs and storage mechanisms. Diversification away from Korea to Japan is a potential tailwind. Additionally, potential subsidies for manufacturing in Japan can boost revenue growth.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Competition from Samsung and SK Hynix is a major risk because they can undercut the market with their superior scale and capability for R&D spending. Japanese Yen is currently under inflationary pressure from the United States Federal Reserve's assistance. This can make Japanese goods more expensive in the global market.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Speculative long because of higher risk from its competitive positioning. It offers exposure to the AI storage industry but is risky because of the Japanese yen and competitive positioning.</p>
+                </div>`
+            },
+            {
+                name: "Tokyo Electron",
+                ticker: "TOELY",
+                nativeTicker: "8035.T",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Tokyo Electron operates in the semiconductor equipment manufacturing sector, which is currently facing one of the highest demands ever seen from the AI chip buildout. Additional supply chain constraints and geopolitical concerns around Taiwan are driving semiconductor-based company developments across multiple "non-traditional" regions like the United States, Europe, and Japan.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Tokyo Electron is ahead, if not on par with regional competitors, however behind Lam Research in terms of global market share. Tokyo Electron cannot compete with Lam Research, as they have a near monopoly on lithography, but it competes in a fragmented market against Lam Research (based in the United States). The company has diversified beyond semiconductor equipment into inspection systems and holds about 30% of the global plasma processing market.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>Continued acceleration of the AI buildout is the main driver. Specifically, geopolitical diversification of chip production drives demand from new customers, and the transition from 3nm to 2nm nodes further drives demand due to updates in technological standards.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>The major risks are a potential economic downturn, as we are potentially reaching the end of the peak expansion in the global economy. Restrictions on exporting to China are another potential risk. Japanese Yen is currently under inflationary pressure from the United States Federal Reserve's assistance. This can make Japanese goods more expensive in the global market.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Tokyo Electron is a moderate long because it offers solid exposure to AI-driven fab expansion through its Samsung Relationships, however with greater cyclicality and risk from restrictions than Lam Research. If we decide to buy, we must keep a watchful eye on the news regarding the global economy and potential restrictions.</p>
+                </div>`
+            },
+            {
+                name: "Recruit Holdings Co Ltd",
+                ticker: "RCRUY",
+                nativeTicker: "6098.T",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Recruit Holdings is part of the HR technology, recruitment, and staffing industries. These industries have seen a recent push towards AI-driven hiring processes. The global shift towards automated HR services has placed high demand on cloud-based HR platforms and staffing services.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Recruit Holdings is a dominant player in the Asian market. Recruit Holdings is ahead of most regional peers in Asia with its major platforms, Indeed and Glassdoor. However, it trails behind global competitors like LinkedIn in market share. The company's "Software as a Service" model boosts revenue growth and puts it ahead of traditional competitors, though still behind Microsoft's LinkedIn.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>The main catalyst is the push for AI adoption in the hiring process. Additionally, there is slightly above-natural demand for labor. This is paired with job displacement leading to a corresponding number of unemployed workers looking for jobs. The current market, thus, is driving recruitment demand from both sides: the employer and the employee.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>There is regulatory scrutiny placed on hiring services for bias in the hiring process from flawed AI training. Additionally, Japan, Recruit Holdings' top operational market, sees a declining birth rate. This suggests that the future recruitment pool is shrinking and Recruit Holdings will be negatively affected. Japanese Yen is currently under inflationary pressure from the United States Federal Reserve's assistance. This can make Japanese goods more expensive in the global market.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Recruit Holdings is a compelling long because of its strong AI adoption paired with its protection against future headwinds through its diversified revenue streams. We, however, should be monitoring LinkedIn's competitive moves closely, as recruitment and Hr services are still Recruit Holdings' main revenue streams.</p>
+                </div>`
+            },
+            {
+                name: "Panasonic Holdings Corp",
+                ticker: "PCRHY",
+                nativeTicker: "6752.JPX",
+                currency: "USD",
+                content: `<div class="content-section">
+                    <h3>Industry Trends</h3>
+                    <p>Panasonic operates in the electrical equipment and industrial manufacturing industries. These industries are at an all-time high in terms of demand due to the AI buildout.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Company Industry Positioning</h3>
+                    <p>Panasonic captures 80% global market share in data center server-rack batteries and holds a leading 25% to 35% share in AI motherboard materials. Backed by a $3.1B strategic investment that has driven its highest first-quarter profits in 41 years, Panasonic is outpacing industrial rivals, with over 80% of its data center battery capacity pre-sold through fiscal year 2029</p>
+                </div>
+                <div class="content-section">
+                    <h3>Catalyst</h3>
+                    <p>There is a strong data center build-out by "hyperscalers". There is continued power and efficiency demand as AI models develop and as AI demand grows.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Risks</h3>
+                    <p>Panasonic has a considerable amount of leverage in its capital structure, and the cost of debt is potentially increasing due to influence in the near term from federal banks. If investment spending does not translate into revenue, issues with growth may arise. Since this is a rapidly developing sector, if alternate improved forms of cooling and energy storage appear, Panasonic may lose market share. Japanese Yen is currently under inflationary pressure from the United States Federal Reserve's assistance. This can make Japanese goods more expensive in the global market.</p>
+                </div>
+                <div class="content-section">
+                    <h3>Our Thoughts</h3>
+                    <p>Panasonic is a strong long for the near future because the benefits greatly outpace the risks. If interest rates hike due to inflation, we estimate Panasonic's benefits will still offset its risks.</p>
+                </div>`
+            }
+        ];
+
+        const priceCache = {};
+        const FINNHUB_API_KEY = 'da11ropr01qo0t0kpao0da11ropr01qo0t0kpaog';
+        const JAPAN_STOCKS = [];  // all holdings now use Finnhub-priceable ADR tickers
+
+        async function fetchPriceStooq(nativeTicker, currency) {
+            try {
+                const response = await fetch(
+                    `https://stooq.com/q/l/?s=${nativeTicker}&f=sd2t2ohlcv&h&e=csv`
+                );
+
+                if (response.ok) {
+                    const csv = await response.text();
+                    const lines = csv.trim().split('\n');
+                    if (lines.length > 1) {
+                        const data = lines[1].split(',');
+                        const price = parseFloat(data[2]); // Close price is typically in column 2
+                        if (!isNaN(price)) {
+                            return {
+                                price: price.toFixed(2),
+                                currency: currency
+                            };
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log(`Could not fetch from Stooq for ${nativeTicker}`);
+            }
+            return null;
+        }
+
+        async function fetchPrice(ticker, nativeTicker, currency) {
+            if (priceCache[ticker]) {
+                return priceCache[ticker];
+            }
+
+            try {
+                // Use Stooq for Japanese stocks
+                if (JAPAN_STOCKS.includes(ticker)) {
+                    const result = await fetchPriceStooq(nativeTicker, currency);
+                    if (result) {
+                        priceCache[ticker] = result;
+                        return result;
+                    }
+                } else {
+                    /* another page may already have this quote — spending a call on it
+                       again is what pushes the site past the 60/minute free-tier limit */
+                    const shared = qcacheGet(ticker);
+                    if (shared) {
+                        priceCache[ticker] = {price: shared.c.toFixed(2), currency: currency};
+                        return priceCache[ticker];
+                    }
+                    const response = await fetch(
+                        `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_API_KEY}`
+                    );
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.c) {
+                            qcachePut({[ticker]: {c: data.c, ms: (data.t ? data.t*1000 : Date.now())}});
+                            priceCache[ticker] = {
+                                price: data.c.toFixed(2),
+                                currency: currency
+                            };
+                            return priceCache[ticker];
+                        }
+                    }
+
+                    // Fallback: try native ticker with Finnhub
+                    const response2 = await fetch(
+                        `https://finnhub.io/api/v1/quote?symbol=${nativeTicker}&token=${FINNHUB_API_KEY}`
+                    );
+
+                    if (response2.ok) {
+                        const data = await response2.json();
+                        if (data.c) {
+                            priceCache[ticker] = {
+                                price: data.c.toFixed(2),
+                                currency: currency
+                            };
+                            return priceCache[ticker];
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log(`Could not fetch price for ${ticker}`);
+            }
+            return null;
+        }
+
+        async function refreshAllPrices() {
+            const btn = document.getElementById('refreshBtn');
+            btn.classList.add('loading');
+            btn.textContent = 'LOADING...';
+
+            let updated = 0;
+            for (const holding of holdings) {
+                const priceEl = document.querySelector(`[data-ticker="${holding.nativeTicker}"]`);
+
+                // Show unavailable for Japanese stocks
+                if (JAPAN_STOCKS.includes(holding.ticker)) {
+                    if (priceEl) {
+                        priceEl.innerHTML = `<div class="card-price-loading">N/A</div>`;
+                    }
+                } else {
+                    // Fetch price from Finnhub for others
+                    const priceData = await fetchPrice(holding.ticker, holding.nativeTicker, holding.currency);
+                    if (priceData) {
+                        if (priceEl) {
+                            priceEl.innerHTML = `<div class="card-price-value">${priceData.currency} ${priceData.price}</div><div class="card-price-currency">${priceData.currency}</div>`;
+                            updated++;
+                        }
+                    }
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            document.getElementById('lastUpdate').textContent = `Last updated: ${new Date().toLocaleString()} (${updated}/${holdings.length} prices loaded)`;
+            btn.classList.remove('loading');
+            btn.textContent = 'REFRESH PRICES';
+        }
+
+        function renderHoldings(filtered = holdings) {
+            const list = document.getElementById('holdingsList');
+            list.innerHTML = '';
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="no-results">No holdings found matching your search.</div>';
+                return;
+            }
+
+            filtered.forEach((holding, index) => {
+                const card = document.createElement('div');
+                card.className = 'holding-card';
+                const DCF_PAGES = {"CRH plc": "crh_dcf.html", "Imperial Oil": "imo_dcf.html", "Teva Pharmaceutical": "teva_dcf.html"};
+                const DCF_PENDING = {};
+                const dcfButton = DCF_PAGES[holding.name]
+                    ? '<button class="dcf-btn" onclick="openDCF(event, \'' + DCF_PAGES[holding.name] + '\')">DCF</button>'
+                    : (DCF_PENDING[holding.name]
+                        ? '<button class="dcf-btn" disabled title="DCF model not built yet" '
+                          + 'style="opacity:.35;cursor:not-allowed">DCF</button>'
+                        : '');
+                card.innerHTML = `
+                    <div class="card-header" onclick="toggleCard(${index})">
+                        <div class="card-info">
+                            <div class="card-title">${holding.name}${dcfButton}</div>
+                            <div class="card-ticker">${holding.ticker}</div>
+                        </div>
+                        <div class="card-price" data-ticker="${holding.nativeTicker}">
+                            <div class="card-price-loading">loading...</div>
+                        </div>
+                        <div class="toggle-btn">▶</div>
+                    </div>
+                    <div class="card-content" id="card-${index}">
+                        ${holding.content}
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+
+            refreshAllPrices();
+        }
+
+        function toggleCard(index) {
+            const content = document.getElementById(`card-${index}`);
+            const btn = event.target.closest('.card-header').querySelector('.toggle-btn');
+            content.classList.toggle('active');
+            btn.textContent = content.classList.contains('active') ? '▼' : '▶';
+        }
+
+        function openDCF(event, page) {
+            event.stopPropagation();
+            const currentPath = window.location.pathname;
+            const directory = currentPath.substring(0, currentPath.lastIndexOf('/'));
+            window.location.href = directory + '/' + page;
+        }
+
+        document.getElementById('searchInput').addEventListener('keyup', (e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = holdings.filter(h =>
+                h.name.toLowerCase().includes(query) ||
+                h.ticker.toLowerCase().includes(query)
+            );
+            renderHoldings(filtered);
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', refreshAllPrices);
+
+        renderHoldings();
+    </script>
+</body>
+</html>
