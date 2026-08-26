@@ -11,7 +11,15 @@
     .app { max-width:1500px; margin:0 auto; display:flex; flex-direction:column; gap:8px; }
 
     .top { border:3px solid #000; background:#fff; padding:10px 15px;
-           display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+           display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+           position:relative; padding-right:152px; }
+    /* pinned to the corner of the title block rather than sitting in the nav run;
+       the padding above reserves its column so nothing can flow underneath it */
+    #btnPrint { position:absolute; top:9px; right:12px; }
+    @media (max-width:760px) {
+        .top { padding-right:15px; }
+        #btnPrint { position:static; }
+    }
     .top h1 { font-size:21px; letter-spacing:2px; }
     .top .rt { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     .top a { padding:8px 15px; border:2px solid #000; background:#000; color:#fff;
@@ -35,6 +43,149 @@
     .kpi .l { font-size:8.5px; color:#555; line-height:1.35; margin-top:2px; }
     .kpi .s { color:#999; }
     .up { color:#0b7a3b; } .down { color:#c02b2b; }
+
+
+
+    /* ---------------- popup shell ---------------- */
+    .mdl { position:fixed; inset:0; background:rgba(0,0,0,.58); z-index:9000;
+           display:none; align-items:flex-start; justify-content:center; padding:24px 12px; }
+    .mdl.on { display:flex; }
+    .mdl-box { position:relative; background:#fff; border:3px solid #000; width:100%;
+               max-width:880px; max-height:calc(100vh - 48px); overflow-y:auto; }
+    .mdl-hd { position:sticky; top:0; background:#000; color:#fff; padding:9px 48px 9px 14px;
+              font-size:12px; font-weight:bold; letter-spacing:1.5px; z-index:3; }
+    .mdl-x { position:absolute; top:5px; right:6px; width:30px; height:30px; padding:0;
+             border:2px solid #fff; background:#000; color:#fff; font-family:inherit;
+             font-size:15px; font-weight:bold; line-height:1; cursor:pointer; z-index:4; }
+    .mdl-x:hover { background:#fff; color:#000; }
+    .mdl-bd { padding:14px 18px 18px; }
+    /* the IRR tile opens a popup — its button follows the same outline-and-invert
+       language as every other button on the site rather than a solid black slug */
+    .clickable { cursor:pointer; position:relative; }
+    .clickable:hover { background:#faf9f2; }
+    .l > .calcbtn, .sl > .calcbtn { margin-left:0; margin-top:4px; }
+    /* on the narrow home stat row the label wraps to two lines so this tile stays
+       the same width as its neighbours instead of pushing them along */
+    .sl > .calcbtn { white-space:normal; text-align:center; line-height:1.45;
+                     max-width:94px; }
+    .calcbtn { display:inline-block; margin-left:7px; padding:3px 7px;
+               border:1.5px solid #000; background:#fff; color:#000;
+               font-size:7.5px; font-weight:bold; letter-spacing:.8px; line-height:1.5;
+               vertical-align:1px; white-space:nowrap;
+               transition:background .12s ease, color .12s ease; }
+    .calcbtn::after { content:'\00A0\203A'; }
+    .clickable:hover .calcbtn { background:#000; color:#fff; }
+    .clickable:active .calcbtn { background:#3d3d3d; border-color:#3d3d3d; color:#fff; }
+
+    /* ---------------- IRR breakdown ---------------- */
+    .irrF { text-align:center; font-size:24px; font-weight:bold; letter-spacing:1px;
+            padding:16px 4px 12px; line-height:1.5; }
+    .irrF .s { border-bottom:3px solid; padding:0 1px; }
+    .sC { color:#2a78d6; border-color:#2a78d6; }
+    .sT { color:#eb6834; border-color:#eb6834; }
+    .sR { color:#4a3aa7; border-color:#4a3aa7; }
+    .sV { color:#0b7a3b; border-color:#0b7a3b; }
+    .irrK { display:flex; flex-wrap:wrap; gap:5px 22px; justify-content:center;
+            font-size:10.5px; padding-bottom:13px; border-bottom:2px solid #000; }
+    .irrK span b { font-size:13px; margin-right:3px; }
+    .irrR { text-align:center; font-size:28px; font-weight:bold; padding:15px 0 5px;
+            font-variant-numeric:tabular-nums; }
+    .irrR .lb { font-size:11px; font-weight:normal; color:#666; letter-spacing:1px; }
+    .irrT { width:100%; border-collapse:collapse; font-size:10px;
+            font-variant-numeric:tabular-nums; margin-top:12px; }
+    .irrT th { background:#000; color:#fff; padding:4px 7px; font-size:9px; letter-spacing:.5px;
+               text-align:right; white-space:nowrap; }
+    .irrT th.l, .irrT td.l { text-align:left; }
+    .irrT td { padding:3px 7px; border-bottom:1px solid #eee; text-align:right; white-space:nowrap; }
+    .irrT tr.sum td { border-top:2px solid #000; border-bottom:none; font-weight:bold;
+                      font-size:11px; padding-top:6px; }
+    @media (max-width:560px) {
+        .irrF { font-size:17px; }
+        .irrR { font-size:21px; }
+        .mdl { padding:10px 6px; }
+    }
+    /* The chart is a slope chart rebased to 100, so every line starts at the
+       bottom-left and climbs rightwards — the upper-left corner is structurally
+       empty. The button sits there, opaque so it stays readable regardless. */
+    /* the button is a SIBLING of #bigchart, not a child: drawSlope() replaces
+       that element's innerHTML on every redraw and would delete it */
+    .chartwrap { position:relative; }
+    .stressOpen { position:absolute; top:34px; left:14px; z-index:5;
+                  background:#fff; box-shadow:0 1px 0 #fff, 0 0 0 3px #fff; }
+    .stressOpen:hover { background:#000; color:#fff; }
+    @media (max-width:700px) { .stressOpen { top:26px; left:8px; font-size:9px; padding:3px 7px; } }
+    .stress-box { max-width:1000px; }
+    .stress-foot { display:flex; justify-content:flex-end; margin-top:14px;
+                   padding-top:11px; border-top:2px solid #000; }
+
+    /* ---------------- stress test ---------------- */
+    .sbar { border:2px solid #000; background:#7a1010; color:#fff; padding:7px 13px;
+            font-size:11px; font-weight:bold; letter-spacing:1px;
+            display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .sbar .w { font-weight:normal; letter-spacing:0; font-size:10px; color:#f0c9c9; }
+    .sbar button { font-family:inherit; font-size:9px; font-weight:bold; letter-spacing:1px;
+                   padding:3px 9px; border:1px solid #fff; background:#fff; color:#7a1010;
+                   cursor:pointer; }
+    /* min() keeps the track from exceeding the panel on very narrow phones,
+       where a fixed 316px minimum forced the row to overflow the page */
+    .sgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(316px,100%),1fr));
+             gap:6px 18px; }
+    .sgrp { grid-column:1/-1; font-size:9px; font-weight:bold; letter-spacing:1px; color:#666;
+            border-bottom:1px solid #ddd; padding-bottom:2px; margin:6px 0 3px; }
+    .sgrp:first-child { margin-top:0; }
+    .srow { display:flex; align-items:center; gap:8px; font-size:10px; }
+    .srow .nm { flex:0 0 92px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .srow input[type=range] { cursor:pointer; }
+    .srow input[type=range] { flex:1 1 auto; min-width:0; height:14px; accent-color:#7a1010; }
+    .srow .vv { flex:0 0 42px; text-align:right; font-variant-numeric:tabular-nums;
+                font-weight:bold; }
+    .srow .vv.z { color:#bbb; font-weight:normal; }
+    .srow .ct { flex:0 0 20px; text-align:right; color:#bbb; font-size:9px; }
+    .btn.rs { border-color:#7a1010; color:#7a1010; }
+
+    /* ---------------- printable tearsheet ---------------- */
+    #printHead { display:none; }
+    @media print {
+        @page { size:letter portrait; margin:11mm 10mm; }
+        html, body { background:#fff !important; padding:0 !important; font-size:9px; }
+        .app { max-width:none; gap:5px; }
+        /* screen-only chrome. The stress panel goes entirely: if a scenario is
+           loaded, the red bar above already names it; if not, the panel is an
+           empty control surface taking up a third of the first page. */
+        .top, .ctrls, .btn, .chip, .hint, #stressPanel, #stressMdl, .stressOpen,
+        .panel .head .hr { display:none !important; }
+        /* the chart is the most useful thing on the sheet — keep it, sized to fit */
+        #bigchart svg { max-height:78mm; }
+        #printHead { display:block; border:2px solid #000; padding:7px 10px; margin-bottom:6px; }
+        #printHead .n { font-size:15px; font-weight:bold; letter-spacing:2px; }
+        #printHead .d { font-size:9px; color:#333; margin-top:2px; }
+        .panel, .kpis { border-width:1px; }
+        .kpis, .two .panel { break-inside:avoid; page-break-inside:avoid; }
+        .head { background:#000 !important; color:#fff !important;
+                -webkit-print-color-adjust:exact; print-color-adjust:exact; font-size:9px;
+                padding:3px 8px; }
+        .body { padding:6px 8px; }
+        .kpi { padding:5px 7px; }
+        .kpi .v { font-size:13px; }
+        .kpi .l { font-size:7px; }
+        .dt { font-size:8px; }
+        .dt th, .dt td { padding:2px 4px; }
+        .scroll { overflow:visible !important; max-height:none !important; }
+        .up { color:#0b7a3b !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        .down { color:#c02b2b !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        .sbar { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        /* let the sheet flow rather than forcing the table onto its own page —
+           a forced break left the first page a third empty. If the 27 rows do
+           cross the fold, the header row repeats at the top of the next page. */
+        .dt thead { display:table-header-group; }
+        .dt tr { break-inside:avoid; page-break-inside:avoid; }
+        /* Chrome lays print out at roughly 740px, which trips the 980px mobile
+           breakpoint below and stacks these two panels down the page. Force the
+           pair back side by side so the sheet stays short. */
+        .app .two { display:grid !important; grid-template-columns:1fr 1fr !important; gap:5px; }
+        .two .panel { break-inside:avoid; page-break-inside:avoid; }
+        a[href]:after { content:none !important; }
+    }
 
     .ctrls { display:flex; gap:12px; align-items:center; flex-wrap:wrap;
              padding-bottom:8px; margin-bottom:9px; border-bottom:2px solid #000; }
@@ -90,6 +241,7 @@
 
     <div class="top">
         <h1>SHOURJO'S PORTFOLIO</h1>
+        <button class="btn" id="btnPrint">PRINT TEARSHEET</button>
         <div class="rt">
             <span id="liveStatus" style="font-size:10px;color:#666;">at 18 Aug 2026 close</span>
             <a href="index.html">HOME</a>
@@ -98,11 +250,19 @@
         </div>
     </div>
 
+    <div id="printHead">
+        <div class="n">SHOURJO'S PORTFOLIO</div>
+        <div class="d" id="printMeta"></div>
+    </div>
+    <div class="sbar" id="scenarioBar" style="display:none">
+        <span id="scenarioTxt">SCENARIO ACTIVE</span>
+        <span class="w">every figure on this page is hypothetical
+            <button id="barReset">RESET</button></span>
+    </div>
     <div class="kpis" id="kpis"></div>
-
     <div class="panel">
         <div class="head">
-            <div>ENTRY &rarr; NOW &mdash; EVERY POSITION AND INDEX, REBASED TO 100 AT ITS OWN ENTRY</div>
+            <div>GRAPH</div>
             <div class="hr"><span class="hint">hover a line or its label</span><button class="btn rf">REFRESH LIVE</button></div>
         </div>
         <div class="body">
@@ -117,9 +277,19 @@
                 </div>
                 <div class="cgroup" id="chips"><span class="cl">INDICES</span></div>
             </div>
-            <div id="bigchart"></div>
+            <div class="chartwrap">
+                <button class="btn stressOpen" id="stressOpen">STRESS TEST &rsaquo;</button>
+                <div id="bigchart"></div>
+            </div>
         </div>
     </div>
+    <div class="panel" id="holdPanel">
+        <div class="head"><div>HOLDINGS</div>
+            <div class="hr"><span class="hint">click a column to sort</span><button class="btn rf">REFRESH LIVE</button></div></div>
+        <div class="body"><div class="scroll"><table class="dt" id="holdTable"></table></div></div>
+    </div>
+
+
 
     <div class="panel">
         <div class="head"><div>BENCHMARK SCOREBOARD</div>
@@ -127,11 +297,6 @@
         <div class="body"><div class="scroll"><table class="dt" id="benchTable"></table></div></div>
     </div>
 
-    <div class="panel">
-        <div class="head"><div>HOLDINGS</div>
-            <div class="hr"><span class="hint">click a column to sort</span><button class="btn rf">REFRESH LIVE</button></div></div>
-        <div class="body"><div class="scroll"><table class="dt" id="holdTable"></table></div></div>
-    </div>
 
     <div class="two">
         <div class="panel">
@@ -251,8 +416,30 @@ function proxyInfo(sym) {
     if (q) return {px:q.c, ms:q.ms, live:true};
     return {px:PERF.proxies[sym].last, ms:ASOF_MS, live:false};
 }
-const livePx  = p   => pxInfo(p).px;
-const proxyPx = sym => proxyInfo(sym).px;
+/* ---------------- stress test ----------------
+   A scenario multiplies the CURRENT price of each holding and each index. It
+   never touches entry prices, which are historical fact, and never touches
+   coverage, which is a data question rather than a market one.
+
+   Sector and region shocks hit the book only; the market shock hits the book
+   AND the indices, so a broad selloff moves both sides of the comparison and a
+   sector call moves only yours. Shocks compound:
+       shocked price = price x (1+market) x (1+sector) x (1+region)
+
+   State lives here in memory and is never persisted, so every fresh load of
+   the page starts from the real numbers. */
+const ZERO_SHOCK = () => ({mkt:0, sec:{}, reg:{}});
+PS.shock = ZERO_SHOCK();
+const shockLive = () => PS.shock.mkt !== 0
+    || Object.keys(PS.shock.sec).some(k => PS.shock.sec[k] !== 0)
+    || Object.keys(PS.shock.reg).some(k => PS.shock.reg[k] !== 0);
+const posMult = p => (1 + PS.shock.mkt/100)
+                   * (1 + (PS.shock.sec[p.s] || 0)/100)
+                   * (1 + (PS.shock.reg[p.r] || 0)/100);
+const idxMult = () => (1 + PS.shock.mkt/100);
+
+const livePx  = p   => pxInfo(p).px * posMult(p);
+const proxyPx = sym => proxyInfo(sym).px * idxMult();
 
 /* ---------------- coverage ----------------
    A position is only trustworthy if Finnhub can actually price it. Three states:
@@ -490,9 +677,7 @@ function drawSlope(elId, opts) {
     /* "NOW" rule */
     g += '<line x1="'+RX+'" y1="'+MT+'" x2="'+RX+'" y2="'+(MT+ih)+'" stroke="#0b0b0b" stroke-width="1"/>'
        + '<text x="'+RX+'" y="'+(H-MB+14)+'" font-size="8.5" fill="#0b0b0b" text-anchor="middle" '
-       + 'font-weight="bold">NOW</text>'
-       + '<text x="'+ML+'" y="'+(MT-5)+'" font-size="8.5" fill="#898781">'
-       + 'entry = 100  ·  endpoints spaced evenly by rank, labels carry the real return</text>';
+       + 'font-weight="bold">NOW</text>';
 
     g = '<rect id="'+elId+'_hot" x="'+ML+'" y="'+MT+'" width="'+iw+'" height="'+ih
       + '" fill="transparent" style="cursor:'+(PS.clickHref?'pointer':'crosshair')+'"/>' + g;
@@ -712,14 +897,20 @@ function drawKpis(){
         [Ppct(pr,2),                         'total return',     'on '+Pmoney(basis(),0)+' priced', pr>=0?'up':'down'],
         [Ppct(sr,2),                         'S&P 500',          'same $, same dates',   sr>=0?'up':'down'],
         [(pr-sr>=0?'+':'')+(pr-sr).toFixed(2)+' pts', 'excess',  'vs S&P 500',           pr-sr>=0?'up':'down'],
-        [Ppct(irr(pv),1),                    'annualised',       'money-weighted IRR',   irr(pv)>=0?'up':'down'],
-        [Ppct(irr(benchValue('SPY')),1),     'S&P annualised',   'same basis',           ''],
+        [Ppct(irr(pv),1),                    'IRR',              'money-weighted',       irr(pv)>=0?'up':'down', 'irr'],
+        [Ppct(irr(benchValue('SPY')),1),     'S&P IRR',          'same basis',           ''],
         [rets.filter(r=>r.r>0).length+'/'+rets.length, 'positions up', 'at last price', ''],
         [beat+'/'+rets.length,               'beat the index',   'over their own window','']
     ];
     P$('kpis').innerHTML = K.map(k =>
-        '<div class="kpi"><div class="v '+k[3]+'">'+Pesc(k[0])+'</div>'
-      + '<div class="l">'+Pesc(k[1])+'<br><span class="s">'+Pesc(k[2])+'</span></div></div>').join('');
+        '<div class="kpi'+(k[4]?' clickable':'')+'"'+(k[4]?' data-act="'+k[4]+'"':'')+'>'
+      + '<div class="v '+k[3]+'">'+Pesc(k[0])+'</div>'
+      + (k[4]
+          ? '<div class="l"><span class="calcbtn">SHOW IRR CALCULATION</span></div></div>'
+          : '<div class="l">'+Pesc(k[1])
+            + '<br><span class="s">'+Pesc(k[2])+'</span></div></div>')).join('');
+    const t = P$('kpis').querySelector('[data-act="irr"]');
+    if (t) t.onclick = openIrrModal;
 }
 
 function drawChips(){
@@ -744,7 +935,7 @@ function drawBenchTable(){
         return {k, label:PERF.proxies[k].label, v, r:benchReturn(k), i:irr(v)};
     }).sort((a,b)=>b.r-a.r);
     let h = '<thead><tr><th class="l">INDEX</th><th class="l">PROXY</th><th>END VALUE</th>'
-          + '<th>TOTAL RETURN</th><th>ANNUALISED</th><th>PORTFOLIO EDGE</th></tr></thead><tbody>'
+          + '<th>TOTAL RETURN</th><th>IRR</th><th>PORTFOLIO EDGE</th></tr></thead><tbody>'
           + '<tr style="background:#f4f2e6;font-weight:bold"><td class="l">'+Pesc(PORT_NAME)+'</td>'
           + '<td class="l">'+included().length+' priced holdings</td><td>'+Pmoney(pv)+'</td>'
           + '<td class="'+(pr>=0?'up':'down')+'">'+Ppct(pr)+'</td>'
@@ -769,9 +960,15 @@ const COLS = [['t','TICKER','l'],['n','COMPANY','l'],['s','SECTOR','l'],['r','RE
 
 function holdRows(){
     const tot = portValue() || 1, now = nowDate();
+    /* Ask included() rather than isCovered() directly. included() carries the
+       "if NOTHING is priceable, keep the whole book" fallback; testing coverage
+       here bypassed it, so whenever Finnhub was unreachable every row came back
+       inc:false and the contribution and allocation panels rendered empty while
+       every other panel still showed the full book. */
+    const incSet = new Set(included());
     return PERF.positions.map(p=>{
         const ret = pfReturn(p);
-        return {t:p.t, n:p.n, s:p.s, r:p.r, buy:p.buy, cov:coverage(p), inc:isCovered(p)||!PS.onlyCovered,
+        return {t:p.t, n:p.n, s:p.s, r:p.r, buy:p.buy, cov:coverage(p), inc:incSet.has(p),
                 days:Math.round((now-new Date(p.buy+'T21:00:00Z'))/86400000),
                 px:p.px, sh:p.sh, cost:p.cost, last:livePx(p), val:pfValue(p),
                 asof:isoOf(pxInfo(p).ms), fresh:pxInfo(p).live, rejected:pxInfo(p).rejected,
@@ -887,10 +1084,91 @@ function drawAlloc(){
     P$('alloc').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;">'+g+'</svg>';
 }
 
+
+/* ============================================================
+   STRESS TEST  —  sliders and the hypothetical-scenario banner
+   ============================================================ */
+const SECTORS = [...new Set(PERF.positions.map(p=>p.s))];
+const REGIONS = [...new Set(PERF.positions.map(p=>p.r))];
+const countBy = (key,v) => PERF.positions.filter(p=>p[key]===v).length;
+
+function shockClear() { PS.shock = ZERO_SHOCK(); }
+
+function buildStressUI() {
+    const g = P$('sgrid');
+    const row = (label, bucket, key, count) => {
+        const w = document.createElement('div'); w.className = 'srow';
+        w.innerHTML = '<span class="nm" title="'+Pesc(label)+'">'+Pesc(label)+'</span>'
+                    + '<input type="range" min="-50" max="50" step="1" value="0">'
+                    + '<span class="vv z">0%</span>'
+                    + '<span class="ct">'+(count===undefined?'':count)+'</span>';
+        const inp = w.querySelector('input'), out = w.querySelector('.vv');
+        inp.dataset.bucket = bucket; inp.dataset.key = key;
+        inp.addEventListener('input', () => {
+            const v = +inp.value;
+            if (bucket === 'mkt') PS.shock.mkt = v; else PS.shock[bucket][key] = v;
+            out.textContent = (v>0?'+':'') + v + '%';
+            out.classList.toggle('z', v === 0);
+            drawAll();
+        });
+        g.appendChild(w);
+    };
+    const hdr = t => { const h=document.createElement('div'); h.className='sgrp'; h.textContent=t; g.appendChild(h); };
+
+    hdr('MARKET — moves your holdings AND the indices');
+    row('All markets', 'mkt', 'mkt');
+    hdr('BY SECTOR — your holdings only');
+    SECTORS.forEach(s => row(s, 'sec', s, countBy('s', s)));
+    hdr('BY REGION — your holdings only');
+    REGIONS.forEach(r => row(r, 'reg', r, countBy('r', r)));
+
+    P$('stressReset').onclick = resetStress;
+    P$('barReset').onclick    = resetStress;
+}
+
+/* push PS.shock back into the controls (after a preset or a reset) */
+function syncStressInputs() {
+    document.querySelectorAll('#sgrid input[type=range]').forEach(inp => {
+        const b = inp.dataset.bucket;
+        const v = (b === 'mkt') ? PS.shock.mkt : (PS.shock[b][inp.dataset.key] || 0);
+        inp.value = v;
+        const out = inp.parentNode.querySelector('.vv');
+        out.textContent = (v>0?'+':'') + v + '%';
+        out.classList.toggle('z', v === 0);
+    });
+}
+
+function resetStress() { shockClear(); syncStressInputs(); drawAll(); }
+
+/* the page-wide warning bar. With the panel showing no figures of its own,
+   this is the only thing marking the page as hypothetical, so it spells out
+   the exact scenario in force. */
+function drawStressOut() {
+    const on = shockLive();
+    P$('scenarioBar').style.display = on ? 'flex' : 'none';
+    if (!on) return;
+    const bits = [];
+    if (PS.shock.mkt) bits.push('all markets ' + (PS.shock.mkt>0?'+':'') + PS.shock.mkt + '%');
+    SECTORS.forEach(s => { const v = PS.shock.sec[s]; if (v) bits.push(s+' '+(v>0?'+':'')+v+'%'); });
+    REGIONS.forEach(r => { const v = PS.shock.reg[r]; if (v) bits.push(r+' '+(v>0?'+':'')+v+'%'); });
+    P$('scenarioTxt').textContent = 'SCENARIO: ' + bits.join('  ·  ');
+}
+
+/* ---------------- printable tearsheet ---------------- */
+function drawPrintMeta() {
+    const c = priceCensus();
+    P$('printMeta').textContent =
+        'Performance tearsheet  ·  ' + c.counted + ' priced holdings on '
+      + Pmoney(c.basis,0) + ' invested  ·  printed '
+      + new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})
+      + (shockLive() ? '  ·  HYPOTHETICAL SCENARIO APPLIED' : '');
+}
+
 function drawAll(){
     drawChips();
     drawSlope('bigchart', {W:1000, H:560, MR:176});
     drawKpis(); drawBenchTable(); drawHoldTable(); drawContrib(); drawAlloc();
+    drawStressOut(); drawPrintMeta();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -899,6 +1177,19 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.flt').forEach(x=>x.classList.remove('on'));
         b.classList.add('on'); PS.filter = b.dataset.f; drawAll();
     });
+    buildStressUI();
+    const sm = P$('stressMdl');
+    P$('stressOpen').onclick = () => { sm.classList.add('on'); document.body.style.overflow='hidden'; };
+    const closeStress = () => { sm.classList.remove('on'); document.body.style.overflow=''; };
+    P$('stressX').onclick = closeStress;
+    sm.addEventListener('click', ev => { if (ev.target === sm) closeStress(); });
+    addEventListener('keydown', ev => { if (ev.key === 'Escape') closeStress(); });
+    P$('btnPrint').onclick = () => window.print();
+    /* A scenario is never persisted, so a normal load already starts clean.
+       Restoring from the back/forward cache does NOT re-run this handler and
+       would otherwise bring the old slider positions back with it, so clear
+       explicitly on every show. */
+    addEventListener('pageshow', () => { shockClear(); syncStressInputs(); drawAll(); });
     wireRefreshButtons('liveStatus', drawAll);
     addEventListener('scroll', hideSlopeTip, true);
     let rz; addEventListener('resize', ()=>{ clearTimeout(rz); rz=setTimeout(drawAll,140); });
@@ -906,5 +1197,90 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshLive('liveStatus', drawAll);   /* try live on load; harmless if it fails */
 });
 </script>
+
+<div class="mdl" id="irrMdl">
+    <div class="mdl-box">
+        <div class="mdl-hd">IRR
+            <button class="mdl-x" id="irrX" aria-label="close">&times;</button></div>
+        <div class="mdl-bd" id="irrBd"></div>
+    </div>
+</div>
+<script>
+/* ============================================================
+   IRR POPUP — the solved rate, shown against live values
+   ============================================================ */
+function irrBreakdownHTML() {
+    const inc  = included();
+    const end  = nowDate();
+    const yrsOf = d => (end - new Date(d + 'T21:00:00Z')) / (365.25 * 86400000);
+    const V = portValue();
+    const r = irr(V) / 100;
+
+    const rows = inc.map(p => ({ t:p.t, C:p.cost, y:yrsOf(p.buy), buy:p.buy,
+                                 g:p.cost * Math.pow(1 + r, yrsOf(p.buy)) }))
+                    .sort((a, b) => b.g - a.g);
+    const sumC = rows.reduce((s, x) => s + x.C, 0);
+    const sumG = rows.reduce((s, x) => s + x.g, 0);
+
+    const F = '<div class="irrF">'
+        + '&Sigma;&nbsp; <span class="s sC">C</span>'
+        + ' &times; ( 1 + <span class="s sR">r</span> )'
+        + '<sup><span class="s sT">t</span></sup>'
+        + ' &nbsp;=&nbsp; <span class="s sV">V</span></div>'
+      + '<div class="irrK">'
+        + '<span><b class="sC">C</b> cost of each buy</span>'
+        + '<span><b class="sT">t</b> years held</span>'
+        + '<span><b class="sR">r</b> IRR</span>'
+        + '<span><b class="sV">V</b> value now</span></div>';
+
+    const R = '<div class="irrR"><span class="lb">r =</span> '
+        + '<span class="' + (r >= 0 ? 'up' : 'down') + '">'
+        + (isFinite(r) ? (r * 100).toFixed(2) + '%' : '—') + '</span></div>';
+
+    const T = '<table class="irrT"><thead><tr>'
+        + '<th class="l">TICKER</th><th class="l">BUY</th>'
+        + '<th style="color:#7fb4ee">C</th><th style="color:#f0a583">t</th>'
+        + '<th style="color:#7fd2a8">C &times; (1 + r)<sup>t</sup></th></tr></thead><tbody>'
+        + rows.map(x => '<tr><td class="l"><b>' + x.t + '</b></td>'
+              + '<td class="l" style="color:#888">' + x.buy + '</td>'
+              + '<td>' + Pmoney(x.C) + '</td>'
+              + '<td>' + x.y.toFixed(2) + '</td>'
+              + '<td>' + Pmoney(x.g) + '</td></tr>').join('')
+        + '<tr class="sum"><td class="l">&Sigma;</td><td></td>'
+        + '<td>' + Pmoney(sumC) + '</td><td></td>'
+        + '<td><span class="sV">' + Pmoney(sumG) + '</span> = V</td></tr>'
+        + '</tbody></table>';
+
+    return F + R + T;
+}
+
+function openIrrModal() {
+    document.getElementById('irrBd').innerHTML = irrBreakdownHTML();
+    document.getElementById('irrMdl').classList.add('on');
+    document.body.style.overflow = 'hidden';
+}
+function closeIrrModal() {
+    document.getElementById('irrMdl').classList.remove('on');
+    document.body.style.overflow = '';
+}
+document.addEventListener('DOMContentLoaded', () => {
+    const m = document.getElementById('irrMdl');
+    document.getElementById('irrX').onclick = closeIrrModal;
+    m.addEventListener('click', ev => { if (ev.target === m) closeIrrModal(); });
+    addEventListener('keydown', ev => { if (ev.key === 'Escape') closeIrrModal(); });
+});
+</script>
+<div class="mdl" id="stressMdl">
+    <div class="mdl-box stress-box">
+        <div class="mdl-hd">STRESS TEST
+            <button class="mdl-x" id="stressX" aria-label="close">&times;</button></div>
+        <div class="mdl-bd">
+            <div class="sgrid" id="sgrid"></div>
+            <div class="stress-foot">
+                <button class="btn rs" id="stressReset">RESET</button>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

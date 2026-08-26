@@ -104,27 +104,99 @@
     .chip .sw { display:inline-block; width:8px; height:8px; margin-right:4px;
                 vertical-align:-1px; border:1px solid rgba(0,0,0,.3); background:#ccc; }
     .chip.on { color:#000; border-color:#000; }
-    .left { display:grid; grid-template-rows:7fr 3fr; gap:8px; min-height:0; }
-    @media (max-width:900px) { .left { grid-template-rows:auto auto; } }
+    /* about / update log / news. About sizes to its own text; the log and the
+       news list then split what is left evenly and each scrolls inside itself,
+       so a long log cannot squeeze the news panel down to nothing. */
+    .left { display:grid; grid-template-rows:auto minmax(0,1fr) minmax(0,1fr);
+            gap:8px; min-height:0; }
+    @media (max-width:900px) { .left { grid-template-rows:auto auto auto; } }
     /* two sections inside the one about panel, split by a rule rather than a border */
     .about-head { font-size:11px; font-weight:bold; letter-spacing:1px; margin:20px 0 7px;
                   padding-bottom:4px; border-bottom:1px solid #000; }
     .about-head:first-child { margin-top:0; }
     .about ul { font-size:11px; margin:0 0 5px 17px; }
     .about ul li { margin-bottom:4px; }
-    .left > .panel > .body.about { padding-top:13px; }
+    /* dated log: the date sits in its own column so the entries line up */
+    .about ul.ulog { list-style:none; margin:0; }
+    .ulog li { display:flex; gap:11px; align-items:baseline; margin:0;
+               padding:4px 0; border-bottom:1px solid #eee; }
+    .ulog li:last-child { border-bottom:none; padding-bottom:0; }
+    .ulog .d { flex:0 0 74px; color:#777; white-space:nowrap; }
+    @media (max-width:520px) {
+        .ulog li { flex-direction:column; gap:1px; padding:5px 0; }
+        .ulog .d { flex:none; font-weight:bold; }
+    }
+    .left > .panel:first-child > .body.about { padding-top:13px; }
     /* ABOUT ME is a self-contained row: portrait beside its own copy only.
        Nothing below it is affected — the next heading starts at full width. */
     .mebox { display:flex; align-items:flex-start; gap:13px; }
     .mebox .metext .about-head { margin-top:0; }
-    .mebox .me { flex:0 0 130px; width:130px; border:2px solid #000; display:block; }
+    .mebox .me { flex:0 0 78px; width:78px; border:2px solid #000; display:block; }
     .mebox .me img { display:block; width:100%; height:auto; }
     .mebox .metext { flex:1 1 auto; min-width:0; }
     .mebox .metext p:last-child { margin-bottom:0; }
-    @media (max-width:900px) { .mebox { gap:11px; }
-                               .mebox .me { flex-basis:112px; width:112px; } }
-    @media (max-width:420px) { .mebox { gap:10px; }
-                               .mebox .me { flex-basis:94px; width:94px; } }
+    /* one size everywhere: the portrait is now keyed to the height of its own
+       paragraph, and the old phone overrides were larger than that */
+    @media (max-width:420px) { .mebox { gap:10px; } }
+
+    /* ---------------- popup shell ---------------- */
+    .mdl { position:fixed; inset:0; background:rgba(0,0,0,.58); z-index:9000;
+           display:none; align-items:flex-start; justify-content:center; padding:24px 12px; }
+    .mdl.on { display:flex; }
+    .mdl-box { position:relative; background:#fff; border:3px solid #000; width:100%;
+               max-width:880px; max-height:calc(100vh - 48px); overflow-y:auto; }
+    .mdl-hd { position:sticky; top:0; background:#000; color:#fff; padding:9px 48px 9px 14px;
+              font-size:12px; font-weight:bold; letter-spacing:1.5px; z-index:3; }
+    .mdl-x { position:absolute; top:5px; right:6px; width:30px; height:30px; padding:0;
+             border:2px solid #fff; background:#000; color:#fff; font-family:inherit;
+             font-size:15px; font-weight:bold; line-height:1; cursor:pointer; z-index:4; }
+    .mdl-x:hover { background:#fff; color:#000; }
+    .mdl-bd { padding:14px 18px 18px; }
+    /* the IRR tile opens a popup — its button follows the same outline-and-invert
+       language as every other button on the site rather than a solid black slug */
+    .clickable { cursor:pointer; position:relative; }
+    .clickable:hover { background:#faf9f2; }
+    .l > .calcbtn, .sl > .calcbtn { margin-left:0; margin-top:4px; }
+    /* on the narrow home stat row the label wraps to two lines so this tile stays
+       the same width as its neighbours instead of pushing them along */
+    .sl > .calcbtn { white-space:normal; text-align:center; line-height:1.45;
+                     max-width:94px; }
+    .calcbtn { display:inline-block; margin-left:7px; padding:3px 7px;
+               border:1.5px solid #000; background:#fff; color:#000;
+               font-size:7.5px; font-weight:bold; letter-spacing:.8px; line-height:1.5;
+               vertical-align:1px; white-space:nowrap;
+               transition:background .12s ease, color .12s ease; }
+    .calcbtn::after { content:'\00A0\203A'; }
+    .clickable:hover .calcbtn { background:#000; color:#fff; }
+    .clickable:active .calcbtn { background:#3d3d3d; border-color:#3d3d3d; color:#fff; }
+
+    /* ---------------- IRR breakdown ---------------- */
+    .irrF { text-align:center; font-size:24px; font-weight:bold; letter-spacing:1px;
+            padding:16px 4px 12px; line-height:1.5; }
+    .irrF .s { border-bottom:3px solid; padding:0 1px; }
+    .sC { color:#2a78d6; border-color:#2a78d6; }
+    .sT { color:#eb6834; border-color:#eb6834; }
+    .sR { color:#4a3aa7; border-color:#4a3aa7; }
+    .sV { color:#0b7a3b; border-color:#0b7a3b; }
+    .irrK { display:flex; flex-wrap:wrap; gap:5px 22px; justify-content:center;
+            font-size:10.5px; padding-bottom:13px; border-bottom:2px solid #000; }
+    .irrK span b { font-size:13px; margin-right:3px; }
+    .irrR { text-align:center; font-size:28px; font-weight:bold; padding:15px 0 5px;
+            font-variant-numeric:tabular-nums; }
+    .irrR .lb { font-size:11px; font-weight:normal; color:#666; letter-spacing:1px; }
+    .irrT { width:100%; border-collapse:collapse; font-size:10px;
+            font-variant-numeric:tabular-nums; margin-top:12px; }
+    .irrT th { background:#000; color:#fff; padding:4px 7px; font-size:9px; letter-spacing:.5px;
+               text-align:right; white-space:nowrap; }
+    .irrT th.l, .irrT td.l { text-align:left; }
+    .irrT td { padding:3px 7px; border-bottom:1px solid #eee; text-align:right; white-space:nowrap; }
+    .irrT tr.sum td { border-top:2px solid #000; border-bottom:none; font-weight:bold;
+                      font-size:11px; padding-top:6px; }
+    @media (max-width:560px) {
+        .irrF { font-size:17px; }
+        .irrR { font-size:21px; }
+        .mdl { padding:10px 6px; }
+    }
     .statrow .stat { min-width:76px; }
     .tip { max-width:330px; }
     .btn.flt { padding:2px 6px; font-size:9px; }
@@ -193,14 +265,40 @@
 
                     <!-- ==================== END ABOUT THIS SITE ================= -->
 
-                    <h4 class="about-head">MOST RECENT UPDATES</h4>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="head">
+                    <div>UPDATE LOG</div>
+                </div>
+                <div class="body about">
 
                     <!-- ===================== START UPDATES ====================== -->
 
-                    <ul>
-                        <li>An automatic DCF builder that takes any .htm filing from the SEC EDGAR database and produces a valuation for the company, with some additional guidance and plugins.</li>
-                        <li>A news channel for the holdings.</li>
-                        <li>Live price updating across the whole website, which serves as the basis for every live calculation on it. This was done using the Finnhub API service.</li>
+<ul class="ulog">
+                        <li><span class="d">02 Jun 2026</span><span>Uploaded the 27 original investment theses.</span></li>
+                        <li><span class="d">06 Jun 2026</span><span>Updated the theses for Kioxia, Honda and Tokyo Electron to the current economic state.</span></li>
+                        <li><span class="d">10 Jun 2026</span><span>Updated the portfolio from Interactive Brokers.</span></li>
+                        <li><span class="d">14 Jun 2026</span><span>Updated the theses for Airbus, Tower Semiconductor and Kyocera.</span></li>
+                        <li><span class="d">18 Jun 2026</span><span>Added three DCF valuations.</span></li>
+                        <li><span class="d">22 Jun 2026</span><span>Updated the theses for Mizuho, Imperial Oil and Santander.</span></li>
+                        <li><span class="d">26 Jun 2026</span><span>Added an edit feature that auto-fills a model from an SEC EDGAR .htm filing.</span></li>
+                        <li><span class="d">30 Jun 2026</span><span>Updated the theses for DBS Group, Mitsubishi UFJ and CRH.</span></li>
+                        <li><span class="d">04 Jul 2026</span><span>Built the UI for the performance metrics page.</span></li>
+                        <li><span class="d">08 Jul 2026</span><span>Updated the theses for ASML, Renesas and BBVA.</span></li>
+                        <li><span class="d">12 Jul 2026</span><span>Standardised the top bar and buttons across every page.</span></li>
+                        <li><span class="d">16 Jul 2026</span><span>Updated the theses for ING Groep, Repsol and Orix.</span></li>
+                        <li><span class="d">21 Jul 2026</span><span>Live price updating across the whole website, which serves as the basis for every live calculation on it. This was done using the Finnhub API service.</span></li>
+                        <li><span class="d">25 Jul 2026</span><span>Updated the theses for Safran, Bridgestone and Sumitomo Mitsui.</span></li>
+                        <li><span class="d">30 Jul 2026</span><span>Added the graph to the performance metrics page.</span></li>
+                        <li><span class="d">03 Aug 2026</span><span>Updated the theses for Sumitomo Corp, Panasonic and Advantest.</span></li>
+                        <li><span class="d">07 Aug 2026</span><span>Reworked the home page layout.</span></li>
+                        <li><span class="d">11 Aug 2026</span><span>Updated the theses for Recruit Holdings, Teva and UBS. All 27 are now current.</span></li>
+                        <li><span class="d">15 Aug 2026</span><span>New headshot.</span></li>
+                        <li><span class="d">19 Aug 2026</span><span>Added a live news feature for the holdings.</span></li>
+                        <li><span class="d">22 Aug 2026</span><span>Added a printable tearsheet.</span></li>
+                        <li><span class="d">25 Aug 2026</span><span>Added a scenario analysis feature.</span></li>
                     </ul>
 
                     <!-- ====================== END UPDATES ======================= -->
@@ -236,9 +334,9 @@
                 </div>
                 <div class="body" id="perfBody" style="padding:9px 13px;">
                     <div class="statrow">
-                        <div class="stat">
+                        <div class="stat clickable" id="irrTile" title="show the calculation">
                             <div class="sv" id="pAnn">&mdash;</div>
-                            <div class="sl">portfolio<br><span class="src">annualised</span></div>
+                            <div class="sl"><span class="calcbtn">SHOW IRR CALCULATION</span></div>
                         </div>
                         <div class="stat">
                             <div class="sv" id="sAnn">&mdash;</div>
@@ -1110,7 +1208,7 @@ function drawSlope(elId, opts) {
        + '<text x="'+RX+'" y="'+(H-MB+14)+'" font-size="8.5" fill="#0b0b0b" text-anchor="middle" '
        + 'font-weight="bold">NOW</text>'
        + '<text x="'+ML+'" y="'+(MT-5)+'" font-size="8.5" fill="#898781">'
-       + 'entry = 100  ·  endpoints spaced evenly by rank, labels carry the real return</text>';
+       + 'entry = 100</text>';
 
     g = '<rect id="'+elId+'_hot" x="'+ML+'" y="'+MT+'" width="'+iw+'" height="'+ih
       + '" fill="transparent" style="cursor:'+(PS.clickHref?'pointer':'crosshair')+'"/>' + g;
@@ -1312,6 +1410,85 @@ function wireRefreshButtons(statusId, done) {
                                             refreshLive(statusId, done); }));
 }
 
+</script>
+
+<div class="mdl" id="irrMdl">
+    <div class="mdl-box">
+        <div class="mdl-hd">IRR
+            <button class="mdl-x" id="irrX" aria-label="close">&times;</button></div>
+        <div class="mdl-bd" id="irrBd"></div>
+    </div>
+</div>
+<script>
+/* ============================================================
+   IRR POPUP — the solved rate, shown against live values
+   ============================================================ */
+function irrBreakdownHTML() {
+    const inc  = included();
+    const end  = nowDate();
+    const yrsOf = d => (end - new Date(d + 'T21:00:00Z')) / (365.25 * 86400000);
+    const V = portValue();
+    const r = irr(V) / 100;
+
+    const rows = inc.map(p => ({ t:p.t, C:p.cost, y:yrsOf(p.buy), buy:p.buy,
+                                 g:p.cost * Math.pow(1 + r, yrsOf(p.buy)) }))
+                    .sort((a, b) => b.g - a.g);
+    const sumC = rows.reduce((s, x) => s + x.C, 0);
+    const sumG = rows.reduce((s, x) => s + x.g, 0);
+
+    const F = '<div class="irrF">'
+        + '&Sigma;&nbsp; <span class="s sC">C</span>'
+        + ' &times; ( 1 + <span class="s sR">r</span> )'
+        + '<sup><span class="s sT">t</span></sup>'
+        + ' &nbsp;=&nbsp; <span class="s sV">V</span></div>'
+      + '<div class="irrK">'
+        + '<span><b class="sC">C</b> cost of each buy</span>'
+        + '<span><b class="sT">t</b> years held</span>'
+        + '<span><b class="sR">r</b> IRR</span>'
+        + '<span><b class="sV">V</b> value now</span></div>';
+
+    const R = '<div class="irrR"><span class="lb">r =</span> '
+        + '<span class="' + (r >= 0 ? 'up' : 'down') + '">'
+        + (isFinite(r) ? (r * 100).toFixed(2) + '%' : '—') + '</span></div>';
+
+    const T = '<table class="irrT"><thead><tr>'
+        + '<th class="l">TICKER</th><th class="l">BUY</th>'
+        + '<th style="color:#7fb4ee">C</th><th style="color:#f0a583">t</th>'
+        + '<th style="color:#7fd2a8">C &times; (1 + r)<sup>t</sup></th></tr></thead><tbody>'
+        + rows.map(x => '<tr><td class="l"><b>' + x.t + '</b></td>'
+              + '<td class="l" style="color:#888">' + x.buy + '</td>'
+              + '<td>' + Pmoney(x.C) + '</td>'
+              + '<td>' + x.y.toFixed(2) + '</td>'
+              + '<td>' + Pmoney(x.g) + '</td></tr>').join('')
+        + '<tr class="sum"><td class="l">&Sigma;</td><td></td>'
+        + '<td>' + Pmoney(sumC) + '</td><td></td>'
+        + '<td><span class="sV">' + Pmoney(sumG) + '</span> = V</td></tr>'
+        + '</tbody></table>';
+
+    return F + R + T;
+}
+
+function openIrrModal() {
+    document.getElementById('irrBd').innerHTML = irrBreakdownHTML();
+    document.getElementById('irrMdl').classList.add('on');
+    document.body.style.overflow = 'hidden';
+}
+function closeIrrModal() {
+    document.getElementById('irrMdl').classList.remove('on');
+    document.body.style.overflow = '';
+}
+document.addEventListener('DOMContentLoaded', () => {
+    const m = document.getElementById('irrMdl');
+    document.getElementById('irrX').onclick = closeIrrModal;
+    m.addEventListener('click', ev => { if (ev.target === m) closeIrrModal(); });
+    addEventListener('keydown', ev => { if (ev.key === 'Escape') closeIrrModal(); });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('irrTile').addEventListener('click', ev => {
+        ev.stopPropagation(); openIrrModal();
+    });
+});
 </script>
 </body>
 </html>
