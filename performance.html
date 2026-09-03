@@ -142,6 +142,8 @@
     .srow .vv.z { color:#bbb; font-weight:normal; }
     .srow .ct { flex:0 0 20px; text-align:right; color:#bbb; font-size:9px; }
     .btn.rs { border-color:#7a1010; color:#7a1010; }
+    /* charts rendered in R and saved as images */
+    .rchart { display:block; width:100%; height:auto; }
 
     /* ---------------- printable tearsheet ---------------- */
     #printHead { display:none; }
@@ -301,13 +303,13 @@
     <div class="two">
         <div class="panel">
             <div class="head"><div>CONTRIBUTION TO PORTFOLIO RETURN</div>
-                <div class="hr"><span class="hint">gain in $</span><button class="btn rf">REFRESH LIVE</button></div></div>
-            <div class="body"><div id="contrib"></div></div>
+                <div class="hr"><span class="hint">gain in $ &middot; built in R &middot; 18 Aug 2026</span></div></div>
+            <div class="body"><img class="rchart" src="contribution.png" alt="Gain per holding"></div>
         </div>
         <div class="panel">
             <div class="head"><div>ALLOCATION</div>
-                <div class="hr"><span class="hint">share of current market value</span><button class="btn rf">REFRESH LIVE</button></div></div>
-            <div class="body"><div id="alloc"></div></div>
+                <div class="hr"><span class="hint">share of market value &middot; built in R &middot; 18 Aug 2026</span></div></div>
+            <div class="body"><img class="rchart" src="allocation.png" alt="Share of portfolio per holding"></div>
         </div>
     </div>
 
@@ -1008,81 +1010,7 @@ function drawHoldTable(){
     });
 }
 
-function drawContrib(){
-    const rows = holdRows().filter(r=>r.inc).sort((a,b)=>b.gain-a.gain);
-    const W=560, RH=15, PADT=6, LBL=54, VAL=64;
-    const H = PADT + rows.length*RH + 6;
-    const max = Math.max(...rows.map(r=>Math.abs(r.gain))) || 1;
-    const zx = LBL + (W-LBL-VAL)/2, sc = (W-LBL-VAL)/2/max;
-    let g = '<line x1="'+zx+'" y1="'+PADT+'" x2="'+zx+'" y2="'+(H-4)+'" stroke="#999"/>';
-    rows.forEach((r,i)=>{
-        const y=PADT+i*RH, w=Math.abs(r.gain)*sc, x=r.gain>=0?zx:zx-w;
-        g += '<rect x="'+x.toFixed(1)+'" y="'+(y+2)+'" width="'+Math.max(0.6,w).toFixed(1)+'" height="'+(RH-5)
-           + '" fill="'+(r.gain>=0?'#0b7a3b':'#c02b2b')+'"/>'
-           + '<text x="'+(LBL-5)+'" y="'+(y+RH-5)+'" font-size="9" text-anchor="end" font-weight="bold">'+Pesc(r.t)+'</text>'
-           + '<text x="'+(W-VAL+5)+'" y="'+(y+RH-5)+'" font-size="9" fill="'+(r.gain>=0?'#0b7a3b':'#c02b2b')
-           + '" style="font-variant-numeric:tabular-nums">'+(r.gain>=0?'+':'−')+'$'+Math.abs(r.gain).toFixed(0)+'</text>';
-    });
-    P$('contrib').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;">'+g+'</svg>';
-}
 
-function drawAlloc(){
-    const rows = holdRows().filter(r=>r.inc), total = rows.reduce((s,r)=>s+r.val,0) || 1;
-    const group = key => { const m={}; rows.forEach(r=>{m[r[key]]=(m[r[key]]||0)+r.val;});
-        return Object.keys(m).map(k=>({k,v:m[k]})).sort((a,b)=>b.v-a.v); };
-    const PAL=['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7','#c02b2b'];
-
-    /* Vertical 100% columns rather than horizontal bars: the panel is tall and
-       narrow, so stacking downwards gives every slice real height and leaves
-       room to name it, instead of squeezing seven sectors across one thin strip. */
-    const W=560, H=470, TOP=46, BOT=452, COLW=86;
-    const COLX=[46, 316];                       /* one column per dimension */
-    const LBLX=[COLX[0]+COLW+10, COLX[1]+COLW+10];
-    const colH = BOT-TOP;
-    let g='';
-
-    [['BY SECTOR', group('s')], ['BY REGION', group('r')]].forEach((pair,gi)=>{
-        const [title,data]=pair, cx=COLX[gi], lx=LBLX[gi];
-        g += '<text x="'+cx+'" y="'+(TOP-16)+'" font-size="10.5" font-weight="bold" '
-           + 'letter-spacing="0.5">'+title+'</text>';
-
-        /* place a label beside each slice, nudged apart so none collide */
-        let y = TOP;
-        const marks = data.map((d,i)=>{
-            const h = d.v/total*colH, mid = y + h/2;
-            const o = {k:d.k, v:d.v, share:d.v/total*100, y, h, mid, col:PAL[i%PAL.length]};
-            y += h; return o;
-        });
-        const LH = 13;
-        const lab = marks.map(m=>({m, ly:m.mid}));
-        for (let i=1;i<lab.length;i++)
-            if (lab[i].ly - lab[i-1].ly < LH) lab[i].ly = lab[i-1].ly + LH;
-        const over = lab.length ? lab[lab.length-1].ly - BOT : 0;
-        if (over > 0) lab.forEach(l => l.ly -= over);
-
-        marks.forEach((m,i)=>{
-            g += '<rect x="'+cx+'" y="'+m.y.toFixed(1)+'" width="'+COLW+'" height="'
-               + Math.max(0.7, m.h-0.6).toFixed(1)+'" fill="'+m.col+'"/>';
-            /* the percentage sits inside the slice whenever it fits */
-            if (m.h > 15)
-                g += '<text x="'+(cx+COLW/2)+'" y="'+(m.y+m.h/2+3.6).toFixed(1)+'" font-size="10.5" '
-                   + 'fill="#fff" text-anchor="middle" font-weight="bold" '
-                   + 'style="font-variant-numeric:tabular-nums">'+m.share.toFixed(1)+'%</text>';
-        });
-        lab.forEach(l=>{
-            const m=l.m;
-            if (Math.abs(l.ly-m.mid) > 1.5)          /* leader line when nudged */
-                g += '<line x1="'+(cx+COLW)+'" y1="'+m.mid.toFixed(1)+'" x2="'+(lx-4)
-                   + '" y2="'+l.ly.toFixed(1)+'" stroke="'+m.col+'" stroke-width="0.8" opacity="0.5"/>';
-            g += '<rect x="'+lx+'" y="'+(l.ly-4.5).toFixed(1)+'" width="7" height="7" fill="'+m.col+'"/>'
-               + '<text x="'+(lx+11)+'" y="'+(l.ly+3.2).toFixed(1)+'" font-size="9.5" fill="#0b0b0b">'
-               + Pesc(m.k.length>17 ? m.k.slice(0,16)+'…' : m.k)
-               + (m.h > 15 ? '' : '  <tspan fill="#666">'+m.share.toFixed(1)+'%</tspan>')
-               + '</text>';
-        });
-    });
-    P$('alloc').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;">'+g+'</svg>';
-}
 
 
 /* ============================================================
@@ -1167,8 +1095,8 @@ function drawPrintMeta() {
 function drawAll(){
     drawChips();
     drawSlope('bigchart', {W:1000, H:560, MR:176});
-    drawKpis(); drawBenchTable(); drawHoldTable(); drawContrib(); drawAlloc();
-    drawStressOut(); drawPrintMeta();
+    drawKpis(); drawBenchTable(); drawHoldTable();
+    drawStressOut(); drawPrintMeta();   /* contribution + allocation are R images now */
 }
 
 document.addEventListener('DOMContentLoaded', () => {
