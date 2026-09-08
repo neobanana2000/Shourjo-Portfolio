@@ -1128,10 +1128,6 @@ function visibleHoldings() {
 }
 
 /* ============================================================
-   SLOPE CHART — one straight segment per line, entry to now
-   ============================================================ */
-
-/* ============================================================
    HISTORY CHART — a real daily line per series
    ------------------------------------------------------------
    Replaces the old two-point slope chart. That one could only draw entry -> now
@@ -1175,11 +1171,42 @@ function filledSeries(tk) {
 
 let HGEOM = null, HOPTS = null;
 
+/* Zoom window as {a,b} indices into HIST.dates, or null for the full range.
+   Set by dragging across the chart; cleared by double-click or ALL. */
+let HZOOM = null, HWIRED = false, HRAF = 0;
+
+/* Coalesce redraws onto frames. A trackpad fires wheel events much faster than
+   this chart can redraw, and drawing per event turns a smooth gesture into a
+   stutter. */
+function queueRedraw() {
+    if (HRAF) return;
+    HRAF = requestAnimationFrame(function () { HRAF = 0; redrawHistory(); });
+}
+
+/* Clamp a window to the data and collapse it to "no zoom" once it spans
+   everything, so zooming out lands cleanly back on the default view. */
+function applyWindow(a, b, N, iDef) {
+    const MINW = 4;
+    let w = Math.max(MINW, Math.round(b - a));
+    /* The default view starts at the first purchase, not at row 0, so "fully
+       zoomed out" is measured against that -- comparing to the whole dataset
+       meant the chart never recognised its own default state. */
+    if (w >= (N - 1) - (iDef || 0)) { HZOOM = null; return; }
+    let na = Math.round(a);
+    if (na < 0) na = 0;
+    if (na + w > N - 1) na = N - 1 - w;
+    HZOOM = {a: na, b: na + w};
+}
+
+function setZoom(a, b) { HZOOM = (a == null) ? null : {a: a, b: b}; redrawHistory(); }
+
+
 /* Redraw the chart WITHOUT touching any surrounding controls. Needed because
    rebuilding the control DOM on hover destroys the element under the cursor,
    which makes chips feel unstable and swallows clicks outright. */
 function redrawHistory() {
     if (HOPTS) drawHistory(HOPTS.elId, HOPTS.opts);
+    if (document.getElementById('cmpTable')) drawCompare('cmpTable');
 }
 
 function drawHistory(elId, opts) {
@@ -1205,7 +1232,15 @@ function drawHistory(elId, opts) {
     const firstBuy = PERF.positions.reduce((m, p) => p.buy < m ? p.buy : m, '9999');
     let i0 = dates.findIndex(d => d >= firstBuy);
     if (i0 < 0) i0 = 0;
-    const span = Math.max(1, N - 1 - i0);
+    /* apply the zoom window; a few points minimum so the chart cannot
+       collapse to a single vertical line on a stray click-drag */
+    const iDef = i0;                  /* where the un-zoomed view begins */
+    let iE = N - 1;
+    if (HZOOM) {
+        i0 = Math.max(0, Math.min(HZOOM.a, N - 4));
+        iE = Math.max(i0 + 3, Math.min(N - 1, HZOOM.b));
+    }
+    const span = Math.max(1, iE - i0);
     const X = i => ML + (i - i0) / span * iw;
 
     /* ---- shocks (performance page only; index page has no stress test) ---- */
@@ -1222,7 +1257,7 @@ function drawHistory(elId, opts) {
     const pv = new Array(N).fill(null);
     const fills = {};
     PERF.positions.forEach(p => { fills[p.t] = filledSeries(p.t); });
-    for (let i = i0; i < N; i++) {
+    for (let i = i0; i <= iE; i++) {
         let cash = PERF.cash0, held = 0, any = false;
         for (const p of PERF.positions) {
             if (p.buy > dates[i]) continue;
@@ -1245,9 +1280,9 @@ function drawHistory(elId, opts) {
             PERF.positions.forEach(p => {
                 cash -= p.cost;
                 const s = fills[p.t];
-                if (s && s[N - 1] != null) held += p.sh * s[N - 1] * pMult(p);
+                if (s && s[iE] != null) held += p.sh * s[iE] * pMult(p);
             });
-            return (cash + held) / (pv[N - 1] || 1);
+            return (cash + held) / (pv[iE] || 1);
         })() : 1
     });
 
@@ -1268,7 +1303,7 @@ function drawHistory(elId, opts) {
         if (!s || s[i0] == null) return;
         const px = PERF.proxies[sym] || {};
         const mv = new Array(N).fill(null);
-        for (let i = i0; i < N; i++) {
+        for (let i = i0; i <= iE; i++) {
             let cash = PERF.cash0, held = 0;
             for (const p of PERF.positions) {
                 if (p.buy > dates[i]) continue;
@@ -1311,7 +1346,7 @@ function drawHistory(elId, opts) {
            instead looks equivalent but is not: the chip reads a live quote and
            the series ends at the last close, so a position sitting near zero
            can be red on its chip and green on its line. One number, one colour. */
-        const endV = s[N - 1];
+        const endV = s[iE];
         const up = (typeof pfReturn === 'function')
             ? pfReturn(p) >= 0
             : (endV == null ? true : endV >= s[bi]);
@@ -1333,15 +1368,22 @@ function drawHistory(elId, opts) {
     /* apply the shock to the final point only: history is history, the shock is
        a "what if prices moved today" question about the right-hand edge */
     lines.forEach(L => {
-        L.endReal = L.vals[N - 1];
+        L.endReal = L.vals[iE];
         L.end = L.endReal == null ? null : L.endReal * L.mult;
     });
 
     /* ---- y scale ---- */
+    /* only the visible slice: scaling to the full history would leave a
+       zoomed view squashed into a sliver of the plot area */
     let lo = Infinity, hi = -Infinity;
-    lines.forEach(L => L.vals.forEach(v => {
-        if (v == null) return; if (v < lo) lo = v; if (v > hi) hi = v;
-    }));
+    lines.forEach(L => {
+        for (let i = i0; i <= iE; i++) {
+            const v = L.vals[i];
+            if (v == null) continue;
+            if (v < lo) lo = v;
+            if (v > hi) hi = v;
+        }
+    });
     lines.forEach(L => { if (L.end != null) { lo = Math.min(lo, L.end); hi = Math.max(hi, L.end); } });
     if (!isFinite(lo)) { lo = 90; hi = 110; }
     const pad = Math.max(2, (hi - lo) * 0.06);
@@ -1369,10 +1411,13 @@ function drawHistory(elId, opts) {
 
     /* x labels: first of each quarter that falls in range */
     let lastLab = '';
-    for (let i = i0; i < N; i++) {
+    for (let i = i0; i <= iE; i++) {
         const m = dates[i].slice(0, 7);
         const mm = +m.slice(5);
-        if (mm % 3 !== 1 || m === lastLab) continue;
+        /* quarterly over a long window, monthly once zoomed in, else the
+           zoomed chart ends up with one or two lonely labels */
+        const step = (iE - i0) > 300 ? 3 : (iE - i0) > 90 ? 2 : 1;
+        if ((mm - 1) % step !== 0 || m === lastLab) continue;
         lastLab = m;
         const x = X(i);
         if (x < ML + 12 || x > ML + iw - 12) continue;
@@ -1390,7 +1435,7 @@ function drawHistory(elId, opts) {
     /* paths, thin ones first so PORTFOLIO and indices sit on top */
     lines.sort((a, b) => a.z - b.z).forEach(L => {
         let d = '', pen = false;
-        for (let i = i0; i < N; i++) {
+        for (let i = i0; i <= iE; i++) {
             const v = L.vals[i];
             if (v == null) { pen = false; continue; }
             d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' ';
@@ -1408,7 +1453,7 @@ function drawHistory(elId, opts) {
            + '" stroke-linejoin="round" opacity="' + op + '"/>';
         /* dashed tail to the shocked endpoint */
         if (L.end != null && L.endReal != null && Math.abs(L.end - L.endReal) > 1e-9) {
-            g += '<line x1="' + X(N - 1) + '" y1="' + Y(L.endReal) + '" x2="' + X(N - 1) + '" y2="' + Y(L.end)
+            g += '<line x1="' + X(iE) + '" y1="' + Y(L.endReal) + '" x2="' + X(iE) + '" y2="' + Y(L.end)
                + '" stroke="' + L.color + '" stroke-width="' + L.w + '" stroke-dasharray="3 3"/>';
         }
     });
@@ -1442,7 +1487,7 @@ function drawHistory(elId, opts) {
        markers scale up rather than staying sized for a 31-line crowd */
     const roomy = labs.length <= 8;
     labs.forEach(o => {
-        const L = o.L, yEnd = Y(o.v), x = X(N - 1);
+        const L = o.L, yEnd = Y(o.v), x = X(iE);
         const pct = (L.dispRet != null) ? L.dispRet : (o.v - 100);
         g += '<line x1="' + x + '" y1="' + yEnd + '" x2="' + (ML + iw + 8) + '" y2="' + o.y
            + '" stroke="' + L.color + '" stroke-width="0.8" opacity="0.5"/>'
@@ -1463,8 +1508,27 @@ function drawHistory(elId, opts) {
     el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" '
         + 'preserveAspectRatio="xMidYMid meet" style="display:block">' + g + '</svg>';
 
-    HGEOM = {elId: elId, i0: i0, N: N, ML: ML, iw: iw, X: X, lines: lines, dates: dates};
+    HGEOM = {elId: elId, i0: i0, iE: iE, iDef: iDef, N: N, ML: ML, iw: iw, X: X,
+             lines: lines, dates: dates};
     wireHover(elId);
+}
+
+/* Date index under the pointer.
+   Deliberately looks the SVG up fresh on every call instead of closing over it:
+   the window-level mouseup below is attached once, and every redraw replaces the
+   SVG, so a captured reference goes stale and its getBoundingClientRect returns
+   zeros -- which silently resolved every drag to the right-hand edge. */
+function hIndexAt(ev) {
+    const G = HGEOM;
+    if (!G) return null;
+    const hot = document.getElementById(G.elId + '_hot');
+    const svg = hot && hot.ownerSVGElement;
+    if (!svg) return null;
+    const r = svg.getBoundingClientRect();
+    if (!r.width) return null;
+    const sx = (ev.clientX - r.left) / r.width * svg.viewBox.baseVal.width;
+    const i = Math.round(G.i0 + (sx - G.ML) / G.iw * (G.iE - G.i0));
+    return Math.max(G.i0, Math.min(G.iE, i));
 }
 
 function wireHover(elId) {
@@ -1473,13 +1537,65 @@ function wireHover(elId) {
     if (!hot) return;
     const svg = hot.ownerSVGElement;
 
+
+    /* ---- TRACKPAD GESTURES ----
+       pinch (ctrl+wheel) zooms, horizontal two-finger pans, vertical zooms.
+       Registered non-passive so preventDefault takes effect at all; Chrome
+       makes wheel listeners passive by default. */
+    hot.addEventListener('wheel', function (ev) {
+        const G = HGEOM;
+        if (!G) return;
+
+        const dx = ev.deltaX, dy = ev.deltaY;
+        const w = G.iE - G.i0;
+        const full = !HZOOM;          /* no zoom applied == the default view */
+
+        /* horizontal swipe -> pan, but only while zoomed in; at full extent
+           there is nowhere to pan to and the gesture should reach the page */
+        if (!ev.ctrlKey && Math.abs(dx) > Math.abs(dy)) {
+            if (full) return;
+            ev.preventDefault();
+            const svg = ev.currentTarget.ownerSVGElement;
+            const r = svg.getBoundingClientRect();
+            const plotPx = r.width * (G.iw / svg.viewBox.baseVal.width);
+            const shift = (dx / Math.max(1, plotPx)) * w;
+            applyWindow(G.i0 + shift, G.iE + shift, G.N, G.iDef);
+            queueRedraw();
+            return;
+        }
+
+        /* Zooming OUT while already at the full range: hand the gesture back to
+           the page. Without this the chart swallows every downward scroll and
+           the page cannot be scrolled past it on a laptop. */
+        if (full && dy > 0) return;
+
+        ev.preventDefault();
+
+        const anchor = hIndexAt(ev);
+        if (anchor == null) return;
+
+        /* Pinch deltas are small and continuous; wheel notches are large and
+           discrete. Scaling by the delta makes both feel proportionate. */
+        const unit = ev.ctrlKey ? 60 : 400;
+        const step = Math.min(0.3, Math.abs(dy) / unit) || 0.08;
+        const f = dy > 0 ? (1 + step) : (1 - step);
+        const nw = w * f;
+        const rel = w > 0 ? (anchor - G.i0) / w : 0.5;
+
+        applyWindow(anchor - rel * nw, anchor - rel * nw + nw, G.N, G.iDef);
+        queueRedraw();
+    }, {passive: false});
+
+    hot.addEventListener('dblclick', function () { setZoom(null); });
+
+
     hot.addEventListener('mousemove', function (ev) {
         const G = HGEOM; if (!G) return;
-        const r = svg.getBoundingClientRect();
-        const sx = (ev.clientX - r.left) / r.width * svg.viewBox.baseVal.width;
-        let i = Math.round(G.i0 + (sx - G.ML) / G.iw * (G.N - 1 - G.i0));
-        i = Math.max(G.i0, Math.min(G.N - 1, i));
+        const i = hIndexAt(ev);
+        if (i == null) return;
         if (cross) { cross.setAttribute('x1', G.X(i)); cross.setAttribute('x2', G.X(i)); cross.style.display = ''; }
+
+
 
         const rows = G.lines.filter(L => L.z > 1 && L.vals[i] != null)
             .sort((a, b) => b.z - a.z)
@@ -1518,6 +1634,10 @@ function drawCompare(elId) {
     const firstBuy = PERF.positions.reduce((m, p) => p.buy < m ? p.buy : m, '9999');
     let i0 = dates.findIndex(d => d >= firstBuy);
     if (i0 < 0) i0 = 0;
+    /* honour the chart's zoom so the table never describes a different window
+       from the picture directly above it */
+    let iEnd = N - 1;
+    if (HZOOM) { i0 = Math.max(0, HZOOM.a); iEnd = Math.min(N - 1, HZOOM.b); }
 
     /* portfolio: cash + holdings, exactly as the black line is built */
     const fills = {};
@@ -1532,7 +1652,7 @@ function drawCompare(elId) {
         });
         return cash + held;
     };
-    const v0 = valueAt(i0), v1 = valueAt(N - 1);
+    const v0 = valueAt(i0), v1 = valueAt(iEnd);
     const pRet = v0 ? (v1 / v0 - 1) * 100 : 0;
 
     const rows = [{label: 'MY PORTFOLIO', ret: pRet, color: '#0b0b0b', me: true}];
@@ -1541,13 +1661,13 @@ function drawCompare(elId) {
        portfolio actually carried */
     ['SPY', 'QQQ', 'EFA', 'EWJ', 'VGK', 'ACWI'].forEach(sym => {
         const s = filledSeries(sym);
-        if (!s || s[i0] == null || s[N - 1] == null) return;
+        if (!s || s[i0] == null || s[iEnd] == null) return;
         const m = PERF.proxies[sym] || {};
         let cash = PERF.cash0, held = 0;
         PERF.positions.forEach(p => {
             cash -= p.cost;
             const bi = dates.findIndex(d => d >= p.buy);
-            if (bi >= 0 && s[bi] != null) held += p.cost * s[N - 1] / s[bi];
+            if (bi >= 0 && s[bi] != null) held += p.cost * s[iEnd] / s[bi];
         });
         const end = cash + held;
         rows.push({label: m.label || sym, sym: sym,
@@ -1581,79 +1701,11 @@ function drawCompare(elId) {
     el.innerHTML = h;
 }
 
-function monthLabel(d) {
-    const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return d.getUTCMonth()===0 ? "'"+String(d.getUTCFullYear()).slice(2) : M[d.getUTCMonth()];
-}
 
-function applyHover(key) {
-    PS.hover = key || null;
-    const root = SLOPE.root; if (!root) return;
-    root.querySelectorAll('.sline').forEach(el => {
-        const on = key === el.dataset.key, dim = key && !on;
-        const bw = parseFloat(el.dataset.w), bo = parseFloat(el.dataset.op);
-        el.setAttribute('stroke-width', on ? (bw<1.5 ? 3 : bw+1.4) : bw);
-        el.setAttribute('opacity', dim ? 0.10 : (on ? 1 : bo));
-    });
-    root.querySelectorAll('.sdot').forEach(el => {
-        const on = key === el.dataset.key, dim = key && !on;
-        el.setAttribute('r', on ? 3.4 : 1.7);
-        el.setAttribute('opacity', dim ? 0.12 : 0.8);
-    });
-    root.querySelectorAll('.slab').forEach(el => {
-        const on = key === el.dataset.key, dim = key && !on;
-        el.setAttribute('opacity', dim ? 0.28 : 1);
-        el.setAttribute('font-weight', on || el.dataset.big==='1' ? 'bold' : 'normal');
-    });
-    root.querySelectorAll('.slead').forEach(el => {
-        const dim = key && key !== el.dataset.key;
-        el.setAttribute('opacity', dim ? 0.12 : 0.45);
-    });
-}
 
-function wireSlope(elId) {
-    const hot = P$(elId+'_hot'); if (!hot) return;
-    const svg = hot.ownerSVGElement;
-    SLOPE.root = svg;
-    let downX = 0;
 
-    const enter = (ev, key) => {
-        applyHover(key);
-        const s = SLOPE.segs.find(x=>x.key===key);
-        if (s) showSlopeTip(ev, s);
-    };
-    const leave = () => { applyHover(null); hideSlopeTip(); };
 
-    /* labels and fat transparent line-twins are both easy mouse targets */
-    svg.querySelectorAll('.slab, .shit').forEach(el => {
-        el.addEventListener('mousemove', ev => enter(ev, el.dataset.key));
-        el.addEventListener('mouseleave', leave);
-        el.addEventListener('click', ev => {
-            ev.stopPropagation();
-            if (PS.clickHref) location.href = PS.clickHref;
-        });
-    });
 
-    /* anywhere else in the plot: snap to whichever line is nearest */
-    hot.addEventListener('mousemove', ev => {
-        const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
-        const sx = (ev.clientX-r.left)/r.width*vb.width;
-        const sy = (ev.clientY-r.top )/r.height*vb.height;
-        let best=null, bd=1e9;
-        SLOPE.segs.forEach(s => {
-            if (sx < s.x0-3 || sx > s.x1+3) return;
-            const f = (sx-s.x0)/Math.max(1,(s.x1-s.x0));
-            const d = Math.abs((s.y0 + (s.y1-s.y0)*f) - sy);
-            if (d < bd) { bd = d; best = s; }
-        });
-        if (best && bd < 14) enter(ev, best.key); else leave();
-    });
-    hot.addEventListener('mouseleave', leave);
-    hot.addEventListener('mousedown', ev => { downX = ev.clientX; });
-    hot.addEventListener('mouseup', ev => {
-        if (Math.abs(ev.clientX-downX) < 5 && PS.clickHref) location.href = PS.clickHref;
-    });
-}
 
 let STIP = null;
 function slopeTipEl(){ if(!STIP){STIP=document.createElement('div');STIP.className='tip';document.body.appendChild(STIP);} return STIP; }
