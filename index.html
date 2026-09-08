@@ -394,12 +394,7 @@
                         </div>
                     </div>
                     <div class="pctrl">
-                        <span class="cl">SHOW</span>
-                        <button class="btn flt on" data-f="all">ALL 27</button>
-                        <button class="btn flt" data-f="top10">TOP 10</button>
-                        <button class="btn flt" data-f="bottom10">BOTTOM 10</button>
-                        <button class="btn flt" data-f="none">INDICES ONLY</button>
-                        <span class="cl" style="margin-left:5px">INDICES</span>
+                        <span class="cl">COMPARE AGAINST</span>
                         <span id="chips"></span>
                     </div>
                     <div id="chart"></div>
@@ -1164,10 +1159,18 @@ function filledSeries(tk) {
     return out;
 }
 
-let HGEOM = null;
+let HGEOM = null, HOPTS = null;
+
+/* Redraw the chart WITHOUT touching any surrounding controls. Needed because
+   rebuilding the control DOM on hover destroys the element under the cursor,
+   which makes chips feel unstable and swallows clicks outright. */
+function redrawHistory() {
+    if (HOPTS) drawHistory(HOPTS.elId, HOPTS.opts);
+}
 
 function drawHistory(elId, opts) {
     opts = opts || {};
+    HOPTS = {elId: elId, opts: opts};
     const el = document.getElementById(elId);
     if (!el) return;
 
@@ -1243,8 +1246,11 @@ function drawHistory(elId, opts) {
         });
     });
 
-    /* holdings, each rebased at its own entry */
-    const vis = (typeof visibleHoldings === 'function') ? visibleHoldings() : [];
+    /* holdings, each rebased at its own entry.
+       opts.holdings === false strips them entirely -- the home page wants only
+       "my portfolio vs the market", and 27 grey lines drown that comparison. */
+    const vis = (opts.holdings === false || typeof visibleHoldings !== 'function')
+        ? [] : visibleHoldings();
     vis.forEach(p => {
         const s = filledSeries(p.t);
         if (!s) return;
@@ -1325,8 +1331,9 @@ function drawHistory(elId, opts) {
         }
         if (!d) return;
         const hot = L.key === (typeof PS !== 'undefined' ? PS.hover : null);
+        const few = lines.length <= 8;
         g += '<path d="' + d + '" fill="none" stroke="' + L.color + '" stroke-width="'
-           + (hot ? L.w + 1.2 : L.w) + '" stroke-linejoin="round" opacity="'
+           + ((hot ? L.w + 1.2 : L.w) * (few ? 1.25 : 1)) + '" stroke-linejoin="round" opacity="'
            + (L.z === 1 && !hot ? 0.72 : 1) + '"/>';
         /* dashed tail to the shocked endpoint */
         if (L.end != null && L.endReal != null && Math.abs(L.end - L.endReal) > 1e-9) {
@@ -1359,13 +1366,17 @@ function drawHistory(elId, opts) {
             labs[i].y = Math.max(labs[i].y, labs[i - 1].y + LH);
     }
 
+    /* with only a handful of lines there is room to breathe, so the type and
+       markers scale up rather than staying sized for a 31-line crowd */
+    const roomy = lines.length <= 8;
     labs.forEach(o => {
         const L = o.L, yEnd = Y(o.v), x = X(N - 1);
         g += '<line x1="' + x + '" y1="' + yEnd + '" x2="' + (ML + iw + 8) + '" y2="' + o.y
            + '" stroke="' + L.color + '" stroke-width="0.8" opacity="0.5"/>'
-           + '<circle cx="' + x + '" cy="' + yEnd + '" r="' + (L.z > 1 ? 2.6 : 1.8) + '" fill="' + L.color + '"/>'
-           + '<text x="' + (ML + iw + 12) + '" y="' + (o.y + 3.5) + '" font-size="'
-           + (L.z > 1 ? 10.5 : 9.5) + '" fill="' + L.color + '"'
+           + '<circle cx="' + x + '" cy="' + yEnd + '" r="' + (L.z > 1 ? (roomy ? 3.4 : 2.6) : 1.8)
+           + '" fill="' + L.color + '"/>'
+           + '<text x="' + (ML + iw + 12) + '" y="' + (o.y + 4) + '" font-size="'
+           + (roomy ? 12.5 : (L.z > 1 ? 10.5 : 9.5)) + '" fill="' + L.color + '"'
            + (L.z > 1 ? ' font-weight="bold"' : '') + '>'
            + L.label + '  ' + (o.v >= 100 ? '+' : '') + (o.v - 100).toFixed(1) + '%</text>';
     });
@@ -1415,7 +1426,7 @@ function wireHover(elId) {
 const drawSlope = drawHistory;
 
 /* pull the daily history once, then redraw */
-loadHistory(() => { try { drawHistory('chart', {W:860, H:520, MR:172}); } catch (e) {} });
+loadHistory(() => { try { drawHistory('chart', {W:900, H:480, MR:224, holdings:false}); } catch (e) {} });
 
 function monthLabel(d) {
     const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];

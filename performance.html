@@ -119,6 +119,16 @@
        empty. The button sits there, opaque so it stays readable regardless. */
     /* the button is a SIBLING of #bigchart, not a child: drawSlope() replaces
        that element's innerHTML on every redraw and would delete it */
+    /* per-stock visibility toggles: 27 of them, so they must stay compact
+       and wrap cleanly rather than forcing the panel wider */
+    .stockpanel { display:flex; flex-wrap:wrap; gap:3px; margin:2px 0 8px; }
+    .stockpanel .chip { font-size:9px; padding:1px 5px; line-height:1.5;
+                        border:1px solid #bbb; background:#fff; color:#999;
+                        cursor:pointer; border-radius:2px; font-family:inherit; }
+    .stockpanel .chip.on { border-color:#000; color:#000; background:#f2f2f2; font-weight:bold; }
+    .stockpanel .chip .r { color:#999; margin-left:3px; font-weight:normal; }
+    .stockpanel .chip.on .r.up { color:#0b7a3b; } .stockpanel .chip.on .r.down { color:#c02b2b; }
+
     .chartwrap { position:relative; }
     .stressOpen { position:absolute; top:34px; left:14px; z-index:5;
                   background:#fff; box-shadow:0 1px 0 #fff, 0 0 0 3px #fff; }
@@ -279,16 +289,16 @@
         </div>
         <div class="body">
             <div class="ctrls">
-                <div class="cgroup"><span class="cl">SHOW</span>
-                    <button class="btn flt on" data-f="all">ALL 27</button>
+                <div class="cgroup"><span class="cl">QUICK SET</span>
+                    <button class="btn flt" data-f="all">ALL 27</button>
+                    <button class="btn flt" data-f="none">NONE</button>
                     <button class="btn flt" data-f="top10">TOP 10</button>
                     <button class="btn flt" data-f="bottom10">BOTTOM 10</button>
                     <button class="btn flt" data-f="winners">WINNERS</button>
                     <button class="btn flt" data-f="losers">LOSERS</button>
-                    <button class="btn flt" data-f="none">INDICES ONLY</button>
                 </div>
-                <div class="cgroup" id="chips"><span class="cl">INDICES</span></div>
             </div>
+            <div class="stockpanel" id="chips"></div>
             <div class="chartwrap">
                 <button class="btn stressOpen" id="stressOpen">STRESS TEST &rsaquo;</button>
                 <div id="bigchart"></div>
@@ -395,11 +405,16 @@ const PROXY_KEYS = Object.keys(PERF.proxies);
 const PORT_NAME = "SHOURJO'S PORTFOLIO";
 
 const PS = {
-    shown:  ['SPY','EFA','EWJ'],  // which index proxies are drawn
+    shown:  [],                   // no indices on the performance graph
+    allShown: ['SPY','EFA','EWJ'],// kept for the benchmark scoreboard below
     filter: 'all',                // all | winners | losers | top10 | bottom10 | none
     live:   null,                 // {stamp, q:{sym:{c,ms}}}
     onlyCovered: true,            // drop positions Finnhub cannot price
-    hover:  null                  // ticker or proxy key under the cursor
+    hover:  null,                 // ticker or proxy key under the cursor
+    /* which tickers are drawn. The single source of truth for the graph --
+       the QUICK SET buttons write into this rather than holding their own
+       mode, so the buttons and the chips can never disagree. */
+    visible: new Set(PERF.positions.map(p => p.t))
 };
 
 /* ---------------- prices ----------------
@@ -552,15 +567,30 @@ function irr(endValue) {
 
 /* which holdings the current filter admits */
 function visibleHoldings() {
-    const all = included().slice().sort((a,b)=>pfReturn(b)-pfReturn(a));
-    switch (PS.filter) {
-        case 'none':     return [];
-        case 'winners':  return all.filter(p=>pfReturn(p) >= 0);
-        case 'losers':   return all.filter(p=>pfReturn(p) <  0);
-        case 'top10':    return all.slice(0,10);
-        case 'bottom10': return all.slice(-10);
-        default:         return all;
+    return included().slice()
+        .sort((a,b)=>pfReturn(b)-pfReturn(a))
+        .filter(p => PS.visible.has(p.t));
+}
+
+/* rank order used by the QUICK SET shortcuts */
+function rankedHoldings() {
+    return included().slice().sort((a,b)=>pfReturn(b)-pfReturn(a));
+}
+
+function applyPreset(f) {
+    const all = rankedHoldings();
+    let sel;
+    switch (f) {
+        case 'none':     sel = [];                                 break;
+        case 'winners':  sel = all.filter(p=>pfReturn(p) >= 0);    break;
+        case 'losers':   sel = all.filter(p=>pfReturn(p) <  0);    break;
+        case 'top10':    sel = all.slice(0,10);                    break;
+        case 'bottom10': sel = all.slice(-10);                     break;
+        default:         sel = all;
     }
+    PS.visible = new Set(sel.map(p=>p.t));
+    drawChips();
+    drawAll();
 }
 
 /* ============================================================
@@ -609,10 +639,18 @@ function filledSeries(tk) {
     return out;
 }
 
-let HGEOM = null;
+let HGEOM = null, HOPTS = null;
+
+/* Redraw the chart WITHOUT touching any surrounding controls. Needed because
+   rebuilding the control DOM on hover destroys the element under the cursor,
+   which makes chips feel unstable and swallows clicks outright. */
+function redrawHistory() {
+    if (HOPTS) drawHistory(HOPTS.elId, HOPTS.opts);
+}
 
 function drawHistory(elId, opts) {
     opts = opts || {};
+    HOPTS = {elId: elId, opts: opts};
     const el = document.getElementById(elId);
     if (!el) return;
 
@@ -688,8 +726,11 @@ function drawHistory(elId, opts) {
         });
     });
 
-    /* holdings, each rebased at its own entry */
-    const vis = (typeof visibleHoldings === 'function') ? visibleHoldings() : [];
+    /* holdings, each rebased at its own entry.
+       opts.holdings === false strips them entirely -- the home page wants only
+       "my portfolio vs the market", and 27 grey lines drown that comparison. */
+    const vis = (opts.holdings === false || typeof visibleHoldings !== 'function')
+        ? [] : visibleHoldings();
     vis.forEach(p => {
         const s = filledSeries(p.t);
         if (!s) return;
@@ -770,8 +811,9 @@ function drawHistory(elId, opts) {
         }
         if (!d) return;
         const hot = L.key === (typeof PS !== 'undefined' ? PS.hover : null);
+        const few = lines.length <= 8;
         g += '<path d="' + d + '" fill="none" stroke="' + L.color + '" stroke-width="'
-           + (hot ? L.w + 1.2 : L.w) + '" stroke-linejoin="round" opacity="'
+           + ((hot ? L.w + 1.2 : L.w) * (few ? 1.25 : 1)) + '" stroke-linejoin="round" opacity="'
            + (L.z === 1 && !hot ? 0.72 : 1) + '"/>';
         /* dashed tail to the shocked endpoint */
         if (L.end != null && L.endReal != null && Math.abs(L.end - L.endReal) > 1e-9) {
@@ -804,13 +846,17 @@ function drawHistory(elId, opts) {
             labs[i].y = Math.max(labs[i].y, labs[i - 1].y + LH);
     }
 
+    /* with only a handful of lines there is room to breathe, so the type and
+       markers scale up rather than staying sized for a 31-line crowd */
+    const roomy = lines.length <= 8;
     labs.forEach(o => {
         const L = o.L, yEnd = Y(o.v), x = X(N - 1);
         g += '<line x1="' + x + '" y1="' + yEnd + '" x2="' + (ML + iw + 8) + '" y2="' + o.y
            + '" stroke="' + L.color + '" stroke-width="0.8" opacity="0.5"/>'
-           + '<circle cx="' + x + '" cy="' + yEnd + '" r="' + (L.z > 1 ? 2.6 : 1.8) + '" fill="' + L.color + '"/>'
-           + '<text x="' + (ML + iw + 12) + '" y="' + (o.y + 3.5) + '" font-size="'
-           + (L.z > 1 ? 10.5 : 9.5) + '" fill="' + L.color + '"'
+           + '<circle cx="' + x + '" cy="' + yEnd + '" r="' + (L.z > 1 ? (roomy ? 3.4 : 2.6) : 1.8)
+           + '" fill="' + L.color + '"/>'
+           + '<text x="' + (ML + iw + 12) + '" y="' + (o.y + 4) + '" font-size="'
+           + (roomy ? 12.5 : (L.z > 1 ? 10.5 : 9.5)) + '" fill="' + L.color + '"'
            + (L.z > 1 ? ' font-weight="bold"' : '') + '>'
            + L.label + '  ' + (o.v >= 100 ? '+' : '') + (o.v - 100).toFixed(1) + '%</text>';
     });
@@ -1088,15 +1134,24 @@ function drawKpis(){
 
 function drawChips(){
     const c = P$('chips');
-    c.querySelectorAll('.chip').forEach(e=>e.remove());
-    PROXY_KEYS.forEach(k=>{
-        const on = PS.shown.includes(k), m = PERF.proxies[k];
+    if (!c) return;
+    c.innerHTML = '';
+    rankedHoldings().forEach(p => {
+        const on = PS.visible.has(p.t), r = pfReturn(p);
         const b = document.createElement('button');
-        b.className = 'chip'+(on?' on':'');
-        b.innerHTML = '<span class="sw" style="background:'+(on?m.color:'#ccc')+'"></span>'
-                    + Pesc(m.label)+' <span style="color:#999">'+Pesc(k)+'</span>';
-        b.onclick = () => { const i=PS.shown.indexOf(k);
-                            if(i>=0) PS.shown.splice(i,1); else PS.shown.push(k); drawAll(); };
+        b.className = 'chip' + (on ? ' on' : '');
+        b.title = p.n + '  ' + (r>=0?'+':'') + r.toFixed(1) + '%';
+        b.innerHTML = Pesc(p.t) + '<span class="r ' + (r>=0?'up':'down') + '">'
+                    + (r>=0?'+':'') + r.toFixed(0) + '%</span>';
+        b.onclick = () => {
+            if (PS.visible.has(p.t)) PS.visible.delete(p.t); else PS.visible.add(p.t);
+            drawChips(); drawAll();
+        };
+        /* Hovering a chip lights its line. This redraws ONLY the chart --
+           calling drawAll() here would rebuild this very button mid-hover,
+           which makes the chips flicker and swallows the click. */
+        b.onmouseenter = () => { PS.hover = p.t; redrawHistory(); };
+        b.onmouseleave = () => { PS.hover = null; redrawHistory(); };
         c.appendChild(b);
     });
 }
@@ -1272,10 +1327,7 @@ function drawAll(){
 
 document.addEventListener('DOMContentLoaded', () => {
     PS.clickHref = null;
-    document.querySelectorAll('.flt').forEach(b => b.onclick = () => {
-        document.querySelectorAll('.flt').forEach(x=>x.classList.remove('on'));
-        b.classList.add('on'); PS.filter = b.dataset.f; drawAll();
-    });
+    document.querySelectorAll('.flt').forEach(b => b.onclick = () => applyPreset(b.dataset.f));
     buildStressUI();
     const sm = P$('stressMdl');
     P$('stressOpen').onclick = () => { sm.classList.add('on'); document.body.style.overflow='hidden'; };
