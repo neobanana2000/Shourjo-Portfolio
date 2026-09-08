@@ -763,7 +763,7 @@ function renderChart() {
     const availH = box.clientHeight - (el.offsetTop - box.offsetTop) - 8;
     const availW = el.clientWidth || 700;
     const H = Math.max(300, Math.min(900, Math.round(860 * availH / availW)));
-    drawSlope('chart', {W:860, H:H, MR:172});
+    drawHistory('chart', {W:900, H:H, MR:186, holdings:false, portLabel:'MY PORTFOLIO'});
 
     const pv = portValue(), pr = portReturn(), sr = benchReturn('SPY');
     const pi = irr(pv), si = irr(benchValue('SPY'));

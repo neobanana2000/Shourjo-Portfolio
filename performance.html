@@ -719,14 +719,37 @@ function drawHistory(elId, opts) {
         })() : 1
     });
 
-    /* indices, rebased at the same date as the portfolio */
+    /* Indices, DOLLAR-MATCHED to the portfolio's own cash flows.
+       ------------------------------------------------------------------
+       Not a rebased index line. Each purchase is replayed as if the same
+       dollars had bought the index on the same day, and the untouched cash sits
+       alongside exactly as it does in the portfolio curve.
+
+       Rebasing the raw index instead silently assumes the whole account was
+       invested on day one. It was not: only 3% was deployed in Jan 2025 and the
+       average across the window is about 35%. Comparing a gradually-deployed
+       book against a lump sum charges the portfolio for 20 months of market it
+       was never exposed to -- it made a portfolio that BEAT every benchmark
+       look like it trailed all six. */
     (typeof PS !== 'undefined' ? PS.shown : []).forEach(sym => {
         const s = filledSeries(sym);
         if (!s || s[i0] == null) return;
         const px = PERF.proxies[sym] || {};
+        const mv = new Array(N).fill(null);
+        for (let i = i0; i < N; i++) {
+            let cash = PERF.cash0, held = 0;
+            for (const p of PERF.positions) {
+                if (p.buy > dates[i]) continue;
+                cash -= p.cost;
+                const bi = dates.findIndex(d => d >= p.buy);
+                if (bi >= 0 && s[bi] != null && s[i] != null) held += p.cost * s[i] / s[bi];
+            }
+            mv[i] = cash + held;
+        }
+        const base = mv[i0] || PERF.cash0;
         lines.push({
             key: sym, label: px.label || sym, color: px.color || '#888', w: 2.2, z: 2,
-            vals: s.map((v, i) => (i < i0 || v == null) ? null : v / s[i0] * 100),
+            vals: mv.map(v => v == null ? null : v / base * 100),
             mult: hasShock ? iMult() : 1
         });
     });
@@ -945,6 +968,86 @@ const drawSlope = drawHistory;
 
 /* pull the daily history once, then redraw */
 loadHistory(() => { try { drawHistory('bigchart', {W:1060, H:560, MR:190, portLabel:'MY PORTFOLIO'}); } catch (e) {} });
+
+/* ============================================================
+   COMPARISON TABLE — the numbers behind the home-page chart
+   ------------------------------------------------------------
+   Every figure here is computed from the same daily series the chart draws, and
+   over the same window (first purchase -> last close), so the table can never
+   quietly disagree with the picture above it. All six proxies appear regardless
+   of which are toggled on: the chart is a view, this is the reference.
+   ============================================================ */
+function drawCompare(elId) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!HIST) { el.innerHTML = ''; return; }
+
+    const dates = HIST.dates, N = dates.length;
+    const firstBuy = PERF.positions.reduce((m, p) => p.buy < m ? p.buy : m, '9999');
+    let i0 = dates.findIndex(d => d >= firstBuy);
+    if (i0 < 0) i0 = 0;
+
+    /* portfolio: cash + holdings, exactly as the black line is built */
+    const fills = {};
+    PERF.positions.forEach(p => { fills[p.t] = filledSeries(p.t); });
+    const valueAt = i => {
+        let cash = PERF.cash0, held = 0;
+        PERF.positions.forEach(p => {
+            if (p.buy > dates[i]) return;
+            cash -= p.cost;
+            const s = fills[p.t];
+            if (s && s[i] != null) held += p.sh * s[i];
+        });
+        return cash + held;
+    };
+    const v0 = valueAt(i0), v1 = valueAt(N - 1);
+    const pRet = v0 ? (v1 / v0 - 1) * 100 : 0;
+
+    const rows = [{label: 'MY PORTFOLIO', ret: pRet, color: '#0b0b0b', me: true}];
+    /* dollar-matched, same as the chart lines: each purchase replayed into the
+       index on its own date, so the benchmark is charged the same cash-drag the
+       portfolio actually carried */
+    ['SPY', 'QQQ', 'EFA', 'EWJ', 'VGK', 'ACWI'].forEach(sym => {
+        const s = filledSeries(sym);
+        if (!s || s[i0] == null || s[N - 1] == null) return;
+        const m = PERF.proxies[sym] || {};
+        let cash = PERF.cash0, held = 0;
+        PERF.positions.forEach(p => {
+            cash -= p.cost;
+            const bi = dates.findIndex(d => d >= p.buy);
+            if (bi >= 0 && s[bi] != null) held += p.cost * s[N - 1] / s[bi];
+        });
+        const end = cash + held;
+        rows.push({label: m.label || sym, sym: sym,
+                   ret: (end / PERF.cash0 - 1) * 100, color: m.color || '#888'});
+    });
+    rows.sort((a, b) => b.ret - a.ret);
+
+    const pct = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+    const money = v => '$' + Math.round(v).toLocaleString('en-US');
+    const nice = d => new Date(d + 'T12:00:00Z')
+        .toLocaleDateString('en-US', {day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC'});
+
+    let h = '<table class="cmp"><thead><tr>'
+          + '<th>BENCHMARK</th><th class="n">RETURN</th>'
+          + '<th class="n">$10,000 GROWS TO</th><th class="n">VS MY PORTFOLIO</th>'
+          + '</tr></thead><tbody>';
+
+    rows.forEach(r => {
+        const diff = r.ret - pRet;
+        h += '<tr' + (r.me ? ' class="me"' : '') + '>'
+           + '<td><span class="sw" style="background:' + r.color + '"></span>'
+           + r.label + (r.sym ? ' <span class="tk">' + r.sym + '</span>' : '') + '</td>'
+           + '<td class="n">' + pct(r.ret) + '</td>'
+           + '<td class="n">' + money(10000 * (1 + r.ret / 100)) + '</td>'
+           + '<td class="n">'
+           + (r.me ? '—' : (diff >= 0 ? '+' : '') + diff.toFixed(1) + ' pts') + '</td>'
+           + '</tr>';
+    });
+
+    h += '</tbody></table>';
+    el.innerHTML = h;
+}
 
 function monthLabel(d) {
     const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1358,7 +1461,7 @@ function drawPrintMeta() {
 
 function drawAll(){
     drawChips();
-    drawSlope('bigchart', {W:1000, H:560, MR:176});
+    drawHistory('bigchart', {W:1060, H:560, MR:190, portLabel:'MY PORTFOLIO'});
     drawKpis(); drawBenchTable(); drawHoldTable();
     drawStressOut(); drawPrintMeta();   /* contribution + allocation are R images now */
 }
