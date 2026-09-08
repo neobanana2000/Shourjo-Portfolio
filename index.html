@@ -1121,142 +1121,301 @@ function visibleHoldings() {
 /* ============================================================
    SLOPE CHART — one straight segment per line, entry to now
    ============================================================ */
-let SLOPE = {segs:[], geom:null};
 
-function drawSlope(elId, opts) {
+/* ============================================================
+   HISTORY CHART — a real daily line per series
+   ------------------------------------------------------------
+   Replaces the old two-point slope chart. That one could only draw entry -> now
+   because entry and now were the only two prices the page had. data/series.json
+   carries every daily close since 2025-01-02, so each line is now the actual
+   path the price took.
+
+   Three kinds of line, all rebased to 100 so they share one axis:
+     PORTFOLIO  account value (cash + holdings), rebased at the first buy
+     indices    rebased at the same date, so they answer "vs the market"
+     holdings   rebased at their OWN buy date, so each starts at 100 the day
+                it entered the book
+
+   The y-axis is linear here. The old chart faked its axis (endpoints spaced by
+   rank) because 27 straight lines crowded together; with a real time axis the
+   lines separate on their own, so the axis can be honest and labelled.
+   ============================================================ */
+let HIST = null, HIST_ERR = null;
+
+function loadHistory(done) {
+    fetch('data/series.json', {cache: 'no-cache'})
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+        .then(j => { HIST = j; })
+        .catch(e => { HIST_ERR = e.message; })
+        .then(() => { if (done) done(); });
+}
+
+/* forward-fill: a ticker with no print on a given day keeps its last close, so
+   portfolio value never dips just because one ADR did not trade */
+function filledSeries(tk) {
+    const raw = HIST.series[tk];
+    if (!raw) return null;
+    const out = new Array(raw.length).fill(null);
+    let last = null;
+    for (let i = 0; i < raw.length; i++) {
+        if (raw[i] != null) last = raw[i];
+        out[i] = last;
+    }
+    return out;
+}
+
+let HGEOM = null;
+
+function drawHistory(elId, opts) {
     opts = opts || {};
+    const el = document.getElementById(elId);
+    if (!el) return;
+
+    if (!HIST) {
+        el.innerHTML = '<div style="padding:26px;font-size:12px;color:#666">'
+            + (HIST_ERR ? 'Price history unavailable (' + HIST_ERR + ')'
+                        : 'Loading price history…') + '</div>';
+        return;
+    }
+
     const W = opts.W || 980, H = opts.H || 460;
-    const ML = 44, MR = opts.MR || 168, MT = 16, MB = 28;
-    const iw = W-ML-MR, ih = H-MT-MB;
-    const RX = W-MR;                                  /* the "now" edge */
+    const ML = 46, MR = opts.MR || 168, MT = 16, MB = 30;
+    const iw = W - ML - MR, ih = H - MT - MB;
 
-    const t1 = nowDate().getTime();
-    const t0 = Math.min(...PERF.positions.map(p=>new Date(p.buy+'T21:00:00Z').getTime()));
-    const span = Math.max(1, t1-t0);
-    const X = ms => ML + (ms-t0)/span*iw;
+    const dates = HIST.dates, N = dates.length;
 
-    const vis = visibleHoldings();
-    const holds = vis.map(p => ({
-        kind:'h', key:p.t, label:p.t, p, ret:pfReturn(p),
-        x0:X(new Date(p.buy+'T21:00:00Z').getTime())
+    /* start the axis at the first purchase, not at the first row of data */
+    const firstBuy = PERF.positions.reduce((m, p) => p.buy < m ? p.buy : m, '9999');
+    let i0 = dates.findIndex(d => d >= firstBuy);
+    if (i0 < 0) i0 = 0;
+    const span = Math.max(1, N - 1 - i0);
+    const X = i => ML + (i - i0) / span * iw;
+
+    /* ---- shocks (performance page only; index page has no stress test) ---- */
+    const hasShock = (typeof PS !== 'undefined' && PS.shock &&
+        (PS.shock.mkt || Object.keys(PS.shock.sec || {}).length
+                      || Object.keys(PS.shock.reg || {}).length));
+    const pMult = p => (typeof posMult === 'function') ? posMult(p) : 1;
+    const iMult = () => (typeof idxMult === 'function') ? idxMult() : 1;
+
+    /* ---- build the lines ---- */
+    const lines = [];
+
+    /* PORTFOLIO: cash + marked-to-market holdings, rebased at i0 */
+    const pv = new Array(N).fill(null);
+    const fills = {};
+    PERF.positions.forEach(p => { fills[p.t] = filledSeries(p.t); });
+    for (let i = i0; i < N; i++) {
+        let cash = PERF.cash0, held = 0, any = false;
+        for (const p of PERF.positions) {
+            if (p.buy > dates[i]) continue;
+            cash -= p.cost;
+            const s = fills[p.t];
+            if (s && s[i] != null) { held += p.sh * s[i]; any = true; }
+        }
+        if (any || i === i0) pv[i] = cash + held;
+    }
+    const pBase = pv[i0] || PERF.cash0;
+    lines.push({
+        key: '__PORT__', label: (typeof PORT_NAME !== 'undefined' ? PORT_NAME : 'PORTFOLIO'),
+        color: '#0b0b0b', w: 3.2, z: 3,
+        vals: pv.map(v => v == null ? null : v / pBase * 100),
+        mult: hasShock ? (function () {
+            let cash = PERF.cash0, held = 0;
+            PERF.positions.forEach(p => {
+                cash -= p.cost;
+                const s = fills[p.t];
+                if (s && s[N - 1] != null) held += p.sh * s[N - 1] * pMult(p);
+            });
+            return (cash + held) / (pv[N - 1] || 1);
+        })() : 1
+    });
+
+    /* indices, rebased at the same date as the portfolio */
+    (typeof PS !== 'undefined' ? PS.shown : []).forEach(sym => {
+        const s = filledSeries(sym);
+        if (!s || s[i0] == null) return;
+        const px = PERF.proxies[sym] || {};
+        lines.push({
+            key: sym, label: px.label || sym, color: px.color || '#888', w: 2.2, z: 2,
+            vals: s.map((v, i) => (i < i0 || v == null) ? null : v / s[i0] * 100),
+            mult: hasShock ? iMult() : 1
+        });
+    });
+
+    /* holdings, each rebased at its own entry */
+    const vis = (typeof visibleHoldings === 'function') ? visibleHoldings() : [];
+    vis.forEach(p => {
+        const s = filledSeries(p.t);
+        if (!s) return;
+        const bi = dates.findIndex(d => d >= p.buy);
+        if (bi < 0 || s[bi] == null) return;
+        lines.push({
+            key: p.t, label: p.t, color: '#9aa3ad', w: 1.3, z: 1, p: p,
+            vals: s.map((v, i) => (i < bi || v == null) ? null : v / s[bi] * 100),
+            mult: hasShock ? pMult(p) : 1
+        });
+    });
+
+    /* apply the shock to the final point only: history is history, the shock is
+       a "what if prices moved today" question about the right-hand edge */
+    lines.forEach(L => {
+        L.endReal = L.vals[N - 1];
+        L.end = L.endReal == null ? null : L.endReal * L.mult;
+    });
+
+    /* ---- y scale ---- */
+    let lo = Infinity, hi = -Infinity;
+    lines.forEach(L => L.vals.forEach(v => {
+        if (v == null) return; if (v < lo) lo = v; if (v > hi) hi = v;
     }));
-    const marks = [{kind:'p', key:'__PORT__', label:PORT_NAME, color:'#0b0b0b', w:3.2,
-                    x0:X(t0), ret:portReturn()}];
-    PS.shown.forEach(sym => marks.push({kind:'b', key:sym, label:PERF.proxies[sym].label,
-                    color:PERF.proxies[sym].color, w:2.2, x0:X(t0), ret:benchReturn(sym)}));
+    lines.forEach(L => { if (L.end != null) { lo = Math.min(lo, L.end); hi = Math.max(hi, L.end); } });
+    if (!isFinite(lo)) { lo = 90; hi = 110; }
+    const pad = Math.max(2, (hi - lo) * 0.06);
+    lo -= pad; hi += pad;
+    const Y = v => MT + ih - (v - lo) / (hi - lo) * ih;
 
-    const drawn = marks.concat(holds);
-    drawn.forEach(d => d.v = 100*(1+d.ret/100));
-
-    /* --- vertical placement of the right-hand endpoints ---------------
-       Endpoints are spaced evenly by rank rather than by value. A true linear
-       axis crowds wherever returns cluster, and 22 of these 27 land between 0%
-       and +50%, which piled most of the book into a third of the height. The
-       axis therefore is not linear, so its numbers are hidden and every
-       endpoint carries its real return in its own label instead. */
-    const order = drawn.slice().sort((a,b)=>b.v-a.v);
-    const n = order.length, top = MT+10, bot = MT+ih-10;
-    const gap = n>1 ? (bot-top)/(n-1) : 0;
-    order.forEach((d,i)=> d._y = top + i*gap);
-    const yEnd = d => d._y;
-    /* the left end sits where a zero-return line would rank, so the fan keeps
-       an honest shape: winners open upward, losers downward */
-    const zeroRank = order.filter(d=>d.v>100).length;
-    const yZero = top + Math.min(n-1, Math.max(0, zeroRank)) * gap;
-    const Y = () => yZero;
-    const y100 = Y(100);
+    function ticks(a, b, n) {
+        const raw = (b - a) / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+        const nm = raw / mag, step = (nm < 1.5 ? 1 : nm < 3 ? 2 : nm < 7 ? 5 : 10) * mag;
+        const out = []; for (let v = Math.ceil(a / step) * step; v <= b; v += step) out.push(v);
+        return out;
+    }
 
     let g = '';
 
-    /* the only meaningful horizontal reference left is break-even */
-    g += '<line x1="'+ML+'" y1="'+y100.toFixed(1)+'" x2="'+RX+'" y2="'+y100.toFixed(1)
-       + '" stroke="#8a8a8a" stroke-width="1" stroke-dasharray="3 3"/>'
-       + '<text x="'+(ML-6)+'" y="'+(y100+3.5).toFixed(1)+'" font-size="9" fill="#767570" '
-       + 'text-anchor="end">100</text>';
-
-    /* month ticks */
-    const months = [];
-    let cur = new Date(t0); cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth()+1, 1));
-    while (cur.getTime() <= t1) { months.push(new Date(cur));
-        cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth()+1, 1)); }
-    const every = Math.max(1, Math.ceil(months.length/9));
-    months.filter((_,i)=>i%every===0).forEach(m => {
-        const x = X(m.getTime());
-        g += '<line x1="'+x.toFixed(1)+'" y1="'+MT+'" x2="'+x.toFixed(1)+'" y2="'+(MT+ih)
-           + '" stroke="#f5f4ee" stroke-width="1"/>'
-           + '<text x="'+x.toFixed(1)+'" y="'+(H-MB+14)+'" font-size="9" fill="#767570" '
-           + 'text-anchor="middle">'+monthLabel(m)+'</text>';
+    /* gridlines + y labels */
+    ticks(lo, hi, 6).forEach(v => {
+        const y = Y(v);
+        g += '<line x1="' + ML + '" y1="' + y + '" x2="' + (ML + iw) + '" y2="' + y
+           + '" stroke="' + (Math.abs(v - 100) < 1e-9 ? '#666' : '#e6e6e6') + '" stroke-width="1"'
+           + (Math.abs(v - 100) < 1e-9 ? ' stroke-dasharray="4 3"' : '') + '/>'
+           + '<text x="' + (ML - 6) + '" y="' + (y + 3.5) + '" text-anchor="end" font-size="10" fill="#666">'
+           + v.toFixed(0) + '</text>';
     });
 
-    /* ---------- label column, collision-nudged ---------- */
-    const labels = drawn.map(d => ({d, y:yEnd(d), key:d.key,
-        big: d.kind!=='h',
-        color: d.kind==='h' ? (d.ret>=0?'#0b7a3b':'#c02b2b') : d.color,
-        txt: (d.kind==='h' ? d.label : d.label) + '  ' + Ppct(d.ret, d.kind==='h'?0:1)}));
-    labels.sort((a,b)=>a.y-b.y);
-    /* spacing adapts to the room available, so the column can never overflow
-       the plot no matter how many lines the filter admits */
-    const LH = Math.min(10.4, (ih-6)/Math.max(1, labels.length-1));
-    for (let i=1;i<labels.length;i++)
-        if (labels[i].y - labels[i-1].y < LH) labels[i].y = labels[i-1].y + LH;
-    const over = labels.length ? labels[labels.length-1].y - (MT+ih-3) : 0;
-    if (over > 0) labels.forEach(l => l.y -= over);
-    const under = labels.length ? (MT+3) - labels[0].y : 0;
-    if (under > 0) labels.forEach(l => l.y += under);
+    /* x labels: first of each quarter that falls in range */
+    let lastLab = '';
+    for (let i = i0; i < N; i++) {
+        const m = dates[i].slice(0, 7);
+        const mm = +m.slice(5);
+        if (mm % 3 !== 1 || m === lastLab) continue;
+        lastLab = m;
+        const x = X(i);
+        if (x < ML + 12 || x > ML + iw - 12) continue;
+        g += '<line x1="' + x + '" y1="' + MT + '" x2="' + x + '" y2="' + (MT + ih)
+           + '" stroke="#f0f0f0" stroke-width="1"/>'
+           + '<text x="' + x + '" y="' + (MT + ih + 15) + '" text-anchor="middle" font-size="10" fill="#666">'
+           + new Date(dates[i] + 'T12:00:00Z').toLocaleDateString('en-US', {month: 'short', year: '2-digit', timeZone: 'UTC'})
+           + '</text>';
+    }
 
-    /* ---------- the lines ---------- */
-    const segs = [];
-    drawn.forEach(d => {
-        const lab = labels.find(l=>l.key===d.key);
-        const y1 = lab ? lab.y : yEnd(d);           /* land on the label, so both agree */
-        const y0 = y100;
-        const col = d.kind==='h' ? (d.ret>=0?'#0b7a3b':'#c02b2b') : d.color;
-        const w   = d.kind==='h' ? 1.15 : d.w;
-        const op  = d.kind==='h' ? 0.5 : 1;
-        const fresh = d.kind==='h' ? pxInfo(d.p).live
-                    : d.kind==='b' ? proxyInfo(d.key).live : true;
-        const dash = (PS.live && !fresh) ? ' stroke-dasharray="5 3"' : '';
-        /* a fat transparent twin sits under each line purely as a mouse target */
-        g += '<line class="shit" data-key="'+Pesc(d.key)+'" x1="'+d.x0.toFixed(1)+'" y1="'+y0.toFixed(1)
-           + '" x2="'+RX.toFixed(1)+'" y2="'+y1.toFixed(1)+'" stroke="transparent" stroke-width="11"/>'
-           + '<line class="sline" data-key="'+Pesc(d.key)+'" data-w="'+w+'" data-op="'+op+'" '
-           + 'x1="'+d.x0.toFixed(1)+'" y1="'+y0.toFixed(1)+'" x2="'+RX.toFixed(1)+'" y2="'+y1.toFixed(1)
-           + '" stroke="'+col+'" stroke-width="'+w+'" stroke-linecap="round" opacity="'+op+'"'+dash+'/>';
-        if (d.kind==='h')
-            g += '<circle class="sdot" data-key="'+Pesc(d.key)+'" cx="'+d.x0.toFixed(1)+'" cy="'+y0.toFixed(1)
-               + '" r="1.7" fill="'+col+'" opacity="0.8"/>';
-        segs.push({key:d.key, kind:d.kind, d, x0:d.x0, y0, x1:RX, y1});
+    /* frame */
+    g += '<line x1="' + ML + '" y1="' + (MT + ih) + '" x2="' + (ML + iw) + '" y2="' + (MT + ih) + '" stroke="#000" stroke-width="1.5"/>'
+       + '<line x1="' + ML + '" y1="' + MT + '" x2="' + ML + '" y2="' + (MT + ih) + '" stroke="#000" stroke-width="1.5"/>';
+
+    /* paths, thin ones first so PORTFOLIO and indices sit on top */
+    lines.sort((a, b) => a.z - b.z).forEach(L => {
+        let d = '', pen = false;
+        for (let i = i0; i < N; i++) {
+            const v = L.vals[i];
+            if (v == null) { pen = false; continue; }
+            d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' ';
+            pen = true;
+        }
+        if (!d) return;
+        const hot = L.key === (typeof PS !== 'undefined' ? PS.hover : null);
+        g += '<path d="' + d + '" fill="none" stroke="' + L.color + '" stroke-width="'
+           + (hot ? L.w + 1.2 : L.w) + '" stroke-linejoin="round" opacity="'
+           + (L.z === 1 && !hot ? 0.72 : 1) + '"/>';
+        /* dashed tail to the shocked endpoint */
+        if (L.end != null && L.endReal != null && Math.abs(L.end - L.endReal) > 1e-9) {
+            g += '<line x1="' + X(N - 1) + '" y1="' + Y(L.endReal) + '" x2="' + X(N - 1) + '" y2="' + Y(L.end)
+               + '" stroke="' + L.color + '" stroke-width="' + L.w + '" stroke-dasharray="3 3"/>';
+        }
     });
 
-    /* ---------- draw the labels ---------- */
-    labels.forEach(l => {
-        const yTrue = yEnd(l.d);
-        if (Math.abs(yTrue - l.y) > 1.5)            /* leader when nudged */
-            g += '<line class="slead" data-key="'+Pesc(l.key)+'" x1="'+RX+'" y1="'+yTrue.toFixed(1)
-               + '" x2="'+(RX+5)+'" y2="'+l.y.toFixed(1)+'" stroke="'+l.color
-               + '" stroke-width="0.7" opacity="0.45"/>';
-        g += '<text x="'+(RX+8)+'" y="'+(l.y+3.4).toFixed(1)+'" font-size="'+(l.big?10:8.6)
-           + '" fill="'+l.color+'"'+(l.big?' font-weight="bold"':'')
-           + ' opacity="1" style="font-variant-numeric:tabular-nums;cursor:pointer" '
-           + 'class="slab" data-big="'+(l.big?1:0)+'" data-key="'+Pesc(l.key)+'">'+Pesc(l.txt)+'</text>';
+    /* ---- right-hand labels, pushed apart so they never overlap ---- */
+    const labs = lines.filter(L => L.end != null)
+        .map(L => ({L: L, y: Y(L.end), v: L.end}))
+        .sort((a, b) => a.y - b.y);
+    /* Two-pass separation. Pass one pushes every label down until it clears the
+       one above; that can run the last few off the bottom, so pass two pins the
+       last label to the floor and pushes back up. Clamping each label
+       independently (the obvious fix) does not work -- it just re-stacks them
+       all on the boundary. */
+    const n = labs.length, top = MT + 4, bot = MT + ih - 2;
+    const LH = Math.min(11.5, n > 1 ? (bot - top) / (n - 1) : 11.5);
+    for (let i = 1; i < n; i++)
+        if (labs[i].y - labs[i - 1].y < LH) labs[i].y = labs[i - 1].y + LH;
+    if (n && labs[n - 1].y > bot) {
+        labs[n - 1].y = bot;
+        for (let i = n - 2; i >= 0; i--)
+            labs[i].y = Math.min(labs[i].y, labs[i + 1].y - LH);
+    }
+    if (n && labs[0].y < top) {
+        labs[0].y = top;
+        for (let i = 1; i < n; i++)
+            labs[i].y = Math.max(labs[i].y, labs[i - 1].y + LH);
+    }
+
+    labs.forEach(o => {
+        const L = o.L, yEnd = Y(o.v), x = X(N - 1);
+        g += '<line x1="' + x + '" y1="' + yEnd + '" x2="' + (ML + iw + 8) + '" y2="' + o.y
+           + '" stroke="' + L.color + '" stroke-width="0.8" opacity="0.5"/>'
+           + '<circle cx="' + x + '" cy="' + yEnd + '" r="' + (L.z > 1 ? 2.6 : 1.8) + '" fill="' + L.color + '"/>'
+           + '<text x="' + (ML + iw + 12) + '" y="' + (o.y + 3.5) + '" font-size="'
+           + (L.z > 1 ? 10.5 : 9.5) + '" fill="' + L.color + '"'
+           + (L.z > 1 ? ' font-weight="bold"' : '') + '>'
+           + L.label + '  ' + (o.v >= 100 ? '+' : '') + (o.v - 100).toFixed(1) + '%</text>';
     });
 
-    /* "NOW" rule */
-    g += '<line x1="'+RX+'" y1="'+MT+'" x2="'+RX+'" y2="'+(MT+ih)+'" stroke="#0b0b0b" stroke-width="1"/>'
-       + '<text x="'+RX+'" y="'+(H-MB+14)+'" font-size="8.5" fill="#0b0b0b" text-anchor="middle" '
-       + 'font-weight="bold">NOW</text>'
-       + '<text x="'+ML+'" y="'+(MT-5)+'" font-size="8.5" fill="#898781">'
-       + 'entry = 100</text>';
+    /* hover surface */
+    g += '<rect id="' + elId + '_hot" x="' + ML + '" y="' + MT + '" width="' + iw + '" height="' + ih
+       + '" fill="transparent" style="cursor:crosshair"/>'
+       + '<line id="' + elId + '_cross" x1="0" y1="' + MT + '" x2="0" y2="' + (MT + ih)
+       + '" stroke="#000" stroke-width="1" stroke-dasharray="3 3" style="display:none"/>';
 
-    g = '<rect id="'+elId+'_hot" x="'+ML+'" y="'+MT+'" width="'+iw+'" height="'+ih
-      + '" fill="transparent" style="cursor:'+(PS.clickHref?'pointer':'crosshair')+'"/>' + g;
+    el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" '
+        + 'preserveAspectRatio="xMidYMid meet" style="display:block">' + g + '</svg>';
 
-    P$(elId).innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;" role="img" '
-        + 'aria-label="Each holding and index drawn from its entry price to its live price">'+g+'</svg>';
-
-    SLOPE = {segs, geom:{W,MR,MT,ih,RX,ML}};
-    wireSlope(elId);
+    HGEOM = {elId: elId, i0: i0, N: N, ML: ML, iw: iw, X: X, lines: lines, dates: dates};
+    wireHover(elId);
 }
+
+function wireHover(elId) {
+    const hot = document.getElementById(elId + '_hot');
+    const cross = document.getElementById(elId + '_cross');
+    if (!hot) return;
+    const svg = hot.ownerSVGElement;
+
+    hot.addEventListener('mousemove', function (ev) {
+        const G = HGEOM; if (!G) return;
+        const r = svg.getBoundingClientRect();
+        const sx = (ev.clientX - r.left) / r.width * svg.viewBox.baseVal.width;
+        let i = Math.round(G.i0 + (sx - G.ML) / G.iw * (G.N - 1 - G.i0));
+        i = Math.max(G.i0, Math.min(G.N - 1, i));
+        if (cross) { cross.setAttribute('x1', G.X(i)); cross.setAttribute('x2', G.X(i)); cross.style.display = ''; }
+
+        const rows = G.lines.filter(L => L.z > 1 && L.vals[i] != null)
+            .sort((a, b) => b.z - a.z)
+            .map(L => '<span style="color:' + L.color + '">●</span> ' + L.label
+                 + ' <b>' + (L.vals[i] >= 100 ? '+' : '') + (L.vals[i] - 100).toFixed(1) + '%</b>');
+
+        if (typeof showTip === 'function')
+            showTip(ev, '<b>' + G.dates[i] + '</b><br>' + rows.join('<br>'));
+    });
+    hot.addEventListener('mouseleave', function () {
+        if (cross) cross.style.display = 'none';
+        if (typeof hideTip === 'function') hideTip();
+    });
+}
+
+/* keep the old name working: every existing call site and redraw path uses it */
+const drawSlope = drawHistory;
+
+/* pull the daily history once, then redraw */
+loadHistory(() => { try { drawHistory('chart', {W:860, H:520, MR:172}); } catch (e) {} });
 
 function monthLabel(d) {
     const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
