@@ -1570,20 +1570,14 @@ function drawCompare(elId) {
         h += '<tr' + (r.me ? ' class="me"' : '') + '>'
            + '<td><span class="sw" style="background:' + r.color + '"></span>'
            + r.label + (r.sym ? ' <span class="tk">' + r.sym + '</span>' : '') + '</td>'
-           + '<td class="n ' + (r.ret >= 0 ? 'up' : 'down') + '">' + pct(r.ret) + '</td>'
+           + '<td class="n">' + pct(r.ret) + '</td>'
            + '<td class="n">' + money(10000 * (1 + r.ret / 100)) + '</td>'
-           + '<td class="n ' + (r.me ? '' : (diff <= 0 ? 'up' : 'down')) + '">'
+           + '<td class="n">'
            + (r.me ? '—' : (diff >= 0 ? '+' : '') + diff.toFixed(1) + ' pts') + '</td>'
            + '</tr>';
     });
 
-    h += '</tbody></table><div class="cmpfoot">'
-       + nice(dates[i0]) + ' to ' + nice(dates[N - 1])
-       + '. Benchmarks are <b>dollar-matched</b>: each purchase is replayed as if the same '
-       + 'money had bought the index on the same day, with uninvested cash left in cash. '
-       + 'That charges the benchmark the same cash drag the portfolio carried, so the '
-       + 'comparison is like-for-like rather than against a lump sum invested on day one. '
-       + 'A negative "vs" figure means the benchmark trailed the portfolio.</div>';
+    h += '</tbody></table>';
     el.innerHTML = h;
 }
 
