@@ -39,12 +39,13 @@ p$value <- p$shares * p$price
 p$gain  <- p$value - p$shares * p$buy_price
 p$share <- p$value / sum(p$value) * 100
 
-stamp <- format(Sys.Date(), "%d %b %Y")
+# The runner's clock is UTC, so label it as such rather than implying local time.
+stamp <- paste("R code run at", format(Sys.time(), "%d %b %Y %H:%M", tz = "UTC"), "UTC")
 
 # ---- chart 1: gain per holding ----
 ggplot(p, aes(reorder(ticker, gain), gain, fill = gain > 0)) +
   geom_col() + coord_flip() + theme_minimal() +
-  labs(x = NULL, y = "Gain ($)", caption = paste("live prices", stamp)) +
+  labs(x = NULL, y = "Gain ($)", caption = stamp) +
   theme(legend.position = "none")
 
 ggsave("contribution.png", width = 7, height = 7, dpi = 110)
@@ -52,7 +53,7 @@ ggsave("contribution.png", width = 7, height = 7, dpi = 110)
 # ---- chart 2: share of portfolio per holding ----
 ggplot(p, aes(reorder(ticker, share), share)) +
   geom_col(fill = "#2a78d6") + coord_flip() + theme_minimal() +
-  labs(x = NULL, y = "Share of portfolio (%)", caption = paste("live prices", stamp))
+  labs(x = NULL, y = "Share of portfolio (%)", caption = stamp)
 
 ggsave("allocation.png", width = 7, height = 7, dpi = 110)
 
