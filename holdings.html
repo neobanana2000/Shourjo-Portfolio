@@ -3,7 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Investment Portfolio Holdings</title>
+<meta name="description" content="All 27 positions in Shourjo Majumder's international equity portfolio, each with a written investment thesis and live pricing.">
+<meta name="author" content="Shourjo Majumder">
+<meta name="robots" content="index, follow">
+<meta property="og:title" content="Holdings — Shourjo Majumder">
+<meta property="og:description" content="All 27 positions in Shourjo Majumder's international equity portfolio, each with a written investment thesis and live pricing.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://shourjoportfolio.com/holdings.html">
+<meta property="og:image" content="https://shourjoportfolio.com/shourjo-majumder.jpg">
+<link rel="canonical" href="https://shourjoportfolio.com/holdings.html">
+<meta name="twitter:card" content="summary">
+    <title>Holdings — Shourjo Majumder</title>
     <style>
         * {
             margin: 0;
@@ -123,9 +133,14 @@
 
         .card-info {
             flex: 1;
+            /* A flex item's default min-width is auto, so a long company name
+               refuses to shrink and shoves the ▶ toggle off-screen on phones.
+               min-width:0 lets it give way; the title then wraps instead. */
+            min-width: 0;
         }
 
         .card-title {
+            overflow-wrap: anywhere;
             font-size: 16px;
             margin-bottom: 5px;
         }
@@ -254,7 +269,7 @@
         .sitenav a.here { background:#fff; color:#000; cursor:default; }
         @media (max-width:700px) {
             .topbar { flex-direction:column; align-items:flex-start; }
-            .topbar h1 { font-size:16px; letter-spacing:1px; }
+            .topbar h1 { font-size:16px; letter-spacing:1px; white-space:normal; }
         }
 
         /* same treatment for the buttons on this page */
@@ -265,7 +280,7 @@
 </head>
 <body>
     <div class="container">
-        <div class="topbar"><h1>SHOURJO'S PORTFOLIO</h1><nav class="sitenav"><a href="index.html">HOME</a><a href="performance.html">PERFORMANCE METRICS</a><a href="holdings.html" class="here">HOLDINGS</a></nav></div>
+        <div class="topbar"><h1>SHOURJO MAJUMDER'S PORTFOLIO</h1><nav class="sitenav"><a href="index.html">HOME</a><a href="performance.html">PERFORMANCE METRICS</a><a href="holdings.html" class="here">HOLDINGS</a></nav></div>
         <header>
             <h1>HOLDINGS</h1>
             <p>27 companies &middot; live prices from Finnhub</p>

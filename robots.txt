@@ -1,0 +1,5 @@
+# Every crawler is welcome on every page.
+User-agent: *
+Allow: /
+
+Sitemap: https://shourjoportfolio.com/sitemap.xml
